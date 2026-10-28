@@ -277,10 +277,10 @@ function Shell() {
   }, [inWorkout])
   // The chat owns the bottom of the screen as well: its composer sits where the tabs would be.
   // The first-launch card has no tabs either: they changed the route behind it.
+  const authed = user || isGuest
   const needsPlanOnboarding = authed && !S.profile?.onboardedAt && !S.onboardedAt
   const noTabs = inWorkout || loc.pathname === '/coach' || needsMobileOnboarding || permSteps || needsPlanOnboarding
 
-  const authed = user || isGuest
   // The boot screen in index.html covers the start; it goes once there is something to show.
   useEffect(() => { if (ready || authed) hideBoot() }, [ready, authed])
   if (!ready && !authed) return (
