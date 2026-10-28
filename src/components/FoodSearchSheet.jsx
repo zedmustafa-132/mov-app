@@ -5,7 +5,9 @@ import { scaleNutrients } from '../lib/nutrition/portions.js'
 import { parseNaturalLanguageMeal } from '../lib/nutrition/parser.js'
 import { api } from '../lib/api.js'
 import { CustomFoodSheet } from './CustomFoodSheet.jsx'
-import { Button, SearchField, NumberField, Segmented } from './ui.jsx'
+import { BarcodeScannerModal } from './BarcodeScannerModal.jsx'
+import { PhotoEstimateSheet } from './PhotoEstimateSheet.jsx'
+import { Button, SearchField, NumberField, Segmented, TextArea } from './ui.jsx'
 import Icon from './Icon.jsx'
 import { t } from '../lib/i18n.js'
 
@@ -18,6 +20,11 @@ export function FoodSearchSheet({ meal = 'lunch', date, close }) {
   const [qty, setQty] = useState(100)
   const [unit, setUnit] = useState('g')
   const [targetMeal, setTargetMeal] = useState(meal)
+
+  // Describe meal state (Natural Language Parse)
+  const [describeText, setDescribeText] = useState('')
+  const [parsedMeal, setParsedMeal] = useState(null)
+  const [parsingMeal, setParsingMeal] = useState(false)
 
   const logFood = useNutrition(s => s.logFood)
   const favouriteFoods = useNutrition(s => s.favouriteFoods || [])
@@ -105,6 +112,56 @@ export function FoodSearchSheet({ meal = 'lunch', date, close }) {
     ))
   }
 
+  const handleOpenBarcode = () => {
+    openSheet(closeBc => (
+      <BarcodeScannerModal
+        meal={targetMeal}
+        date={date}
+        onFoodLogged={() => close()}
+        close={closeBc}
+      />
+    ))
+  }
+
+  const handleOpenPhoto = () => {
+    openSheet(closePhoto => (
+      <PhotoEstimateSheet
+        meal={targetMeal}
+        date={date}
+        close={closePhoto}
+      />
+    ))
+  }
+
+  const handleParseMeal = async () => {
+    if (!describeText.trim()) return
+    setParsingMeal(true)
+    try {
+      const res = await api('/api/food/parse-text', {
+        method: 'POST',
+        body: JSON.stringify({ text: describeText })
+      })
+      if (res && Array.isArray(res.items)) {
+        setParsedMeal(res)
+      } else {
+        toast(t('Could not parse meal. Try describing items with quantities.'))
+      }
+    } catch (err) {
+      toast(t('Error parsing meal: {0}', err.message))
+    } finally {
+      setParsingMeal(false)
+    }
+  }
+
+  const handleLogParsedMeal = () => {
+    if (!parsedMeal || !parsedMeal.items?.length) return
+    for (const it of parsedMeal.items) {
+      logFood(date, targetMeal, it.foodRef || { name: it.name, nutrients: it.nutrients }, it.qty, it.unit)
+    }
+    toast(t('Logged {0} items to {1}!', parsedMeal.items.length, targetMeal))
+    close()
+  }
+
   const mealOptions = [
     { value: 'breakfast', label: t('Breakfast') },
     { value: 'lunch', label: t('Lunch') },
@@ -114,6 +171,7 @@ export function FoodSearchSheet({ meal = 'lunch', date, close }) {
 
   const tabOptions = [
     { value: 'search', label: t('Search') },
+    { value: 'describe', label: t('Describe') },
     { value: 'recents', label: t('Recents') },
     { value: 'favorites', label: t('Favorites') },
     { value: 'custom', label: t('Custom') }
@@ -259,35 +317,97 @@ export function FoodSearchSheet({ meal = 'lunch', date, close }) {
 
       {/* Results / List area */}
       <div style={{ flex: 1, overflowY: 'auto', minHeight: 180 }}>
-        {loading && (
-          <div className="muted small" style={{ textAlign: 'center', padding: 20 }}>
-            {t('Searching foods...')}
-          </div>
-        )}
-
-        {!loading && displayList.length > 0 && (
-          <div>{displayList.map(renderFoodRow)}</div>
-        )}
-
-        {!loading && displayList.length === 0 && (
-          <div className="empty" style={{ padding: '30px 10px', textAlign: 'center' }}>
-            <div className="muted small" style={{ marginBottom: 10 }}>
-              {tab === 'search'
-                ? (query ? t('No matching foods found.') : t('Type a food name or amount (e.g. "2 bananas", "oats").'))
-                : t('No items in this category yet.')}
-            </div>
-            <Button size="sm" variant="tinted" icon="plus" onClick={handleOpenCustomFood}>
-              {t('Create Custom Food')}
+        {tab === 'describe' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '4px 0' }}>
+            <label className="lbl2">{t('Describe your full meal')}</label>
+            <TextArea
+              rows={3}
+              placeholder={t('e.g. 2 scrambled eggs, 2 slices toast with 1 tbsp butter, and 1 medium banana')}
+              value={describeText}
+              onChange={e => setDescribeText(e.target.value)}
+            />
+            <Button
+              variant="primary"
+              size="sm"
+              icon="sparkles"
+              onClick={handleParseMeal}
+              disabled={!describeText.trim() || parsingMeal}
+            >
+              {parsingMeal ? t('Parsing meal...') : t('Analyze Meal Text')}
             </Button>
+
+            {parsedMeal && (
+              <div style={{ background: 'var(--surface-2)', padding: 12, borderRadius: 'var(--r-sm)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div className="row between">
+                  <span className="lbl2">{t('Detected Items ({0})', parsedMeal.items?.length || 0)}</span>
+                  <span className="big" style={{ fontSize: 16, fontWeight: 700 }}>
+                    {parsedMeal.totals?.calories || 0} kcal
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {(parsedMeal.items || []).map((it, idx) => (
+                    <div key={idx} className="row between small" style={{ padding: '6px 8px', background: 'var(--surface-3)', borderRadius: 'var(--r-sm)' }}>
+                      <div>
+                        <b>{it.name}</b> <span className="muted">({it.qty} {it.unit})</span>
+                      </div>
+                      <div>
+                        <span>{it.nutrients?.calories || 0} kcal</span> · <span style={{ color: 'var(--blue)' }}>P:{it.nutrients?.protein || 0}g</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {parsedMeal.unresolved?.length > 0 && (
+                  <div className="small muted" style={{ color: 'var(--orange)' }}>
+                    {t('Could not find: {0}', parsedMeal.unresolved.join(', '))}
+                  </div>
+                )}
+
+                <Button variant="primary" icon="check" onClick={handleLogParsedMeal} style={{ marginTop: 4 }}>
+                  {t('Log All Items to {0}', targetMeal)}
+                </Button>
+              </div>
+            )}
           </div>
+        ) : (
+          <>
+            {loading && (
+              <div className="muted small" style={{ textAlign: 'center', padding: 20 }}>
+                {t('Searching foods...')}
+              </div>
+            )}
+
+            {!loading && displayList.length > 0 && (
+              <div>{displayList.map(renderFoodRow)}</div>
+            )}
+
+            {!loading && displayList.length === 0 && (
+              <div className="empty" style={{ padding: '30px 10px', textAlign: 'center' }}>
+                <div className="muted small" style={{ marginBottom: 10 }}>
+                  {tab === 'search'
+                    ? (query ? t('No matching foods found.') : t('Type a food name or amount (e.g. "2 bananas", "oats").'))
+                    : t('No items in this category yet.')}
+                </div>
+                <Button size="sm" variant="tinted" icon="plus" onClick={handleOpenCustomFood}>
+                  {t('Create Custom Food')}
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      <div className="row between" style={{ borderTop: 'var(--hair) solid var(--sep)', paddingTop: 8 }}>
-        <Button size="sm" variant="ghost" icon="plus" onClick={handleOpenCustomFood}>
-          {t('Custom Food')}
+      <div className="row between" style={{ borderTop: 'var(--hair) solid var(--sep)', paddingTop: 8, gap: 6 }}>
+        <Button size="xs" variant="tinted" icon="barcode" onClick={handleOpenBarcode}>
+          {t('Barcode')}
         </Button>
-        <span className="small muted">{t('USDA FoodData Central')}</span>
+        <Button size="xs" variant="tinted" icon="camera" onClick={handleOpenPhoto}>
+          {t('Photo')}
+        </Button>
+        <Button size="xs" variant="ghost" icon="plus" onClick={handleOpenCustomFood}>
+          {t('Custom')}
+        </Button>
       </div>
     </div>
   )

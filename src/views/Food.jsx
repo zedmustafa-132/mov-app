@@ -7,6 +7,8 @@ import { FoodSearchSheet } from '../components/FoodSearchSheet.jsx'
 import { CustomFoodSheet } from '../components/CustomFoodSheet.jsx'
 import { RecipeSheet } from '../components/RecipeSheet.jsx'
 import { PortionEditSheet } from '../components/PortionEditSheet.jsx'
+import { BarcodeScannerModal } from '../components/BarcodeScannerModal.jsx'
+import { PhotoEstimateSheet } from '../components/PhotoEstimateSheet.jsx'
 import { Button } from '../components/ui.jsx'
 import Icon from '../components/Icon.jsx'
 import { t, dateLocale } from '../lib/i18n.js'
@@ -102,8 +104,23 @@ export default function Food() {
   }
 
   const handleOpenBarcodeScanner = () => {
-    // Stub ready for Milestone 3 barcode camera integration
-    toast(t('Barcode scanner ready for Milestone 3! Use Food Search in the meantime.'))
+    openSheet(close => (
+      <BarcodeScannerModal
+        meal="lunch"
+        date={selectedDate}
+        close={close}
+      />
+    ))
+  }
+
+  const handleOpenPhotoEstimator = () => {
+    openSheet(close => (
+      <PhotoEstimateSheet
+        meal="lunch"
+        date={selectedDate}
+        close={close}
+      />
+    ))
   }
 
   // Meals grouping
@@ -150,6 +167,9 @@ export default function Food() {
         </div>
 
         <div className="hdr-actions" style={{ display: 'flex', gap: 6 }}>
+          <button className="iconbtn" onClick={handleOpenPhotoEstimator} aria-label={t('Photo Estimate')} title={t('Photo Estimate')}>
+            <Icon name="camera" />
+          </button>
           <button className="iconbtn" onClick={handleOpenRecipes} aria-label={t('Recipes')} title={t('Recipes')}>
             <Icon name="clipboard" />
           </button>
@@ -372,13 +392,16 @@ export default function Food() {
       {/* Quick Action Buttons */}
       <div className="row" style={{ gap: 8, marginTop: 4, marginBottom: 20 }}>
         <Button size="sm" variant="tinted" icon="barcode" onClick={handleOpenBarcodeScanner} style={{ flex: 1 }}>
-          {t('Scan Barcode')}
+          {t('Barcode')}
+        </Button>
+        <Button size="sm" variant="tinted" icon="camera" onClick={handleOpenPhotoEstimator} style={{ flex: 1 }}>
+          {t('Photo')}
         </Button>
         <Button size="sm" variant="tinted" icon="clipboard" onClick={handleOpenRecipes} style={{ flex: 1 }}>
           {t('Recipes')}
         </Button>
         <Button size="sm" variant="tinted" icon="plus" onClick={handleOpenCustom} style={{ flex: 1 }}>
-          {t('Custom Food')}
+          {t('Custom')}
         </Button>
       </div>
     </div>
