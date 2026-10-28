@@ -23,6 +23,8 @@ import { useUI } from '../store/useUI.js'
 import { useNutrition } from '../store/useNutrition.js'
 import { computeDayTotals, getLocalDateString } from '../lib/nutrition/totals.js'
 import { FoodSearchSheet } from '../components/FoodSearchSheet.jsx'
+import { useGamification } from '../lib/gamification/useGamification.js'
+import { CharacterSheetModal } from '../components/CharacterSheetModal.jsx'
 
 // Home = what to do now + a quick glance. Deep charts & history live in Stats.
 export default function Home() {
@@ -45,6 +47,8 @@ export default function Home() {
   const fatTarget = S.targets?.fatGrams || 65
   const waterTarget = S.targets?.waterMl || 3000
   const remainingKcal = calTarget - nutritionTotals.calories
+  const { levelInfo, characterStats, dailyQuests, streakDays, streakFreezes } = useGamification()
+  const openCharacterSheet = () => openSheet(close => <CharacterSheetModal close={close} />)
   // A weekday can hold several routines. `todayRoutines` is the whole day; `routine` is the
   // first, kept for the one-routine glyph. The derived session name joins them (§9).
   const todayRoutines = effectiveRoutines(S, todayISO())
@@ -122,8 +126,96 @@ export default function Home() {
   return <div className="narrow">
     <div className="hdr">
       <SeasonDeco spot="header-bats" />
-      <div><h1>{user ? t('Hi {0}', user.name) : 'openGym'}</h1><div className="sub">{today.toLocaleDateString(dateLocale(), { weekday: 'long', day: 'numeric', month: 'long' })}</div></div>
+      <div><h1>{user ? t('Hi {0}', user.name) : 'NXT FORM'}</h1><div className="sub">{today.toLocaleDateString(dateLocale(), { weekday: 'long', day: 'numeric', month: 'long' })}</div></div>
       <button className="iconbtn" onClick={() => nav('/settings')} aria-label={trouble ? t('Settings') + ', ' + t('Connection problem') : t('Settings')}><Icon name="gear" />{trouble && <span className="tab-dot" aria-hidden="true" />}</button>
+    </div>
+
+    {/* NXT FORM Level, XP & Quests Card */}
+    <div className="card tappable" style={{ cursor: 'pointer', marginBottom: 12 }} {...tappable(openCharacterSheet)}>
+      <div className="row between" style={{ marginBottom: 6 }}>
+        <div className="row" style={{ gap: 9, alignItems: 'center' }}>
+          <span className="lrow-i" style={{
+            background: 'var(--acc)',
+            color: 'var(--on-acc)',
+            width: 32,
+            height: 32,
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 3px 10px -2px var(--acc)'
+          }}>
+            <Icon name={levelInfo.form.icon} style={{ fontSize: 17 }} />
+          </span>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 16 }}>{levelInfo.form.name}</div>
+            <div className="small muted">{levelInfo.title} · {levelInfo.form.subtitle}</div>
+          </div>
+        </div>
+
+        <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+          <span className="tag" style={{ color: 'var(--acc)', background: 'var(--acc-soft)', fontWeight: 700 }}>
+            LVL {levelInfo.level}
+          </span>
+          <Icon name="chevronRight" className="chev" />
+        </div>
+      </div>
+
+      {/* XP Progress Bar */}
+      <div style={{ margin: '6px 0 10px' }}>
+        <div className="row between small" style={{ marginBottom: 3 }}>
+          <span className="muted">{t('XP Progress')}</span>
+          <span style={{ fontWeight: 600 }}>{levelInfo.xpIntoCurrentLevel} / {levelInfo.xpNeededForCurrentLevel} XP</span>
+        </div>
+        <div style={{ width: '100%', height: 7, background: 'var(--surface-3)', borderRadius: 4, overflow: 'hidden' }}>
+          <div style={{
+            height: '100%',
+            width: `${levelInfo.progressPct}%`,
+            background: 'var(--acc)',
+            borderRadius: 4,
+            transition: 'width 200ms ease'
+          }} />
+        </div>
+      </div>
+
+      {/* Today's 3 Daily Quests */}
+      <div style={{ borderTop: 'var(--hair) solid var(--sep)', paddingTop: 8 }}>
+        <div className="row between" style={{ marginBottom: 6 }}>
+          <span className="lbl2 small">{t("Today's Quests")}</span>
+          <span className="small row" style={{ gap: 4, color: 'var(--orange)', fontWeight: 600 }}>
+            <Icon name="flame" style={{ fontSize: 13 }} />
+            {streakDays} {t('day streak')}
+            {streakFreezes > 0 && <span style={{ color: 'var(--blue)', marginInlineStart: 4 }}>🛡️ {streakFreezes}</span>}
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          {dailyQuests.map(q => (
+            <div key={q.id} className="row between small" style={{
+              padding: '6px 8px',
+              background: q.completed ? 'color-mix(in srgb,var(--green) 10%,transparent)' : 'var(--surface-2)',
+              borderRadius: 'var(--r-sm)'
+            }}>
+              <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+                <Icon
+                  name={q.completed ? 'checkCircle' : 'dot'}
+                  style={{ color: q.completed ? 'var(--green)' : 'var(--label-3)', fontSize: 14 }}
+                />
+                <span style={{ textDecoration: q.completed ? 'line-through' : 'none', opacity: q.completed ? 0.8 : 1 }}>
+                  {q.title}
+                </span>
+              </div>
+              <span className="tag xs" style={{
+                color: q.completed ? 'var(--green)' : 'var(--acc)',
+                background: q.completed ? 'transparent' : 'var(--acc-soft)',
+                fontSize: 11
+              }}>
+                +{q.xp} XP
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
 
     <div className="card">
