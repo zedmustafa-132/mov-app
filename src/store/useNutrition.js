@@ -188,6 +188,23 @@ export const useNutrition = create((set, get) => {
         saveLocal(next)
         return next
       })
+    },
+
+    // Import nutrition data from JSON backup
+    importNutritionData: (data) => {
+      if (!data || typeof data !== 'object') return
+      set(state => {
+        const next = {
+          ...state,
+          days: { ...state.days, ...(data.days || {}) },
+          customFoods: data.customFoods || state.customFoods,
+          recipes: data.recipes || state.recipes,
+          savedMeals: data.savedMeals || state.savedMeals,
+          favouriteFoods: data.favouriteFoods || state.favouriteFoods
+        }
+        saveLocal(next)
+        return next
+      })
     }
   }
 })

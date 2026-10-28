@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, forwardRef, useSyncExternalStore } from 'react'
 import { useNavigate, useParams, useLocation, Navigate } from 'react-router-dom'
 import { useStore, DEF, hasData } from '../store/useStore.js'
+import { useNutrition } from '../store/useNutrition.js'
 import { healthStatus, loadHealth, enableHealth, disableHealth, openHealthConnect, onHealthChange, enableRead, disableRead } from '../lib/health-sync.js'
 import { workoutControls } from '../lib/workout-controls.js'
 import { speedUnitOf } from '../lib/speed.js'
@@ -290,7 +291,19 @@ export default function Settings({ page = null, find = null, via = null, entryKe
   // Reads the store at the moment of the tap: the sheet that asks before a sign-out offers it too,
   // and the copy it exports is the one that has not reached the server.
   const doExport = async () => {
-    const json = JSON.stringify(useStore.getState().S, null, 2)
+    const s = useStore.getState().S
+    const nut = useNutrition.getState()
+    const exportData = {
+      ...s,
+      nxtform_nutrition_v1: {
+        days: nut.days || {},
+        customFoods: nut.customFoods || [],
+        recipes: nut.recipes || [],
+        savedMeals: nut.savedMeals || [],
+        favouriteFoods: nut.favouriteFoods || []
+      }
+    }
+    const json = JSON.stringify(exportData, null, 2)
     const name = 'opengym-backup-' + todayISO() + '.json'
     // WKWebView can't download blob URLs — the native build hands the file to the share sheet.
     if (MOBILE) {
@@ -341,6 +354,9 @@ export default function Settings({ page = null, find = null, via = null, entryKe
         await storeBackupMedia(read.files, { limits: limitsFrom(useStore.getState().config) })
       }
       importBackup(read.state, { mergeWith })
+      if (read.state?.nxtform_nutrition_v1) {
+        useNutrition.getState().importNutritionData(read.state.nxtform_nutrition_v1)
+      }
       // The photos it brought are pending here and maybe gone from the server (a reset): sent now,
       // not after the ten-minute dedupe of the run before the reset.
       if (read.files.length) syncMedia({ force: true })
@@ -990,7 +1006,18 @@ export default function Settings({ page = null, find = null, via = null, entryKe
       {/* The version, where the support template tells people to look for it. On the phone
           build there is no address bar and no about box, so without this there is no way to tell
           which build you are running, or whether an update actually installed. */}
-      <div className="dim small sp-version">
+      <div className="dim small sp-version" style={{ lineHeight: 1.6 }}>
+        <strong>NXT FORM</strong> v{__APP_VERSION__} · {t('free & open source (AGPL v3)')}<br />
+        <a href="https://github.com/DuarteSantos8/openGym" target="_blank" rel="noopener">{t('Upstream openGym repository (AGPL v3)')}</a><br />
+        <div style={{ marginTop: 8, fontSize: '0.88em' }}>
+          <strong>{t('Attributions & Data Rights')}:</strong><br />
+          • {t('Workout engine forked from openGym (AGPL-3.0).')}<br />
+          • {t('Nutrition database sourced from USDA FoodData Central (Public Domain).')}<br />
+          • {t('Barcode database sourced from Open Food Facts (ODbL).')}<br />
+          • {t('Exercise illustrations sourced from free-exercise-db (Unlicense / Public Domain).')}
+        </div>
+      </div>
+      <div className="dim small sp-version" style={{ display: 'none' }}>
         openGym v{__APP_VERSION__} · {t('free & open source (AGPL v3)')}<br />
         <a href="https://github.com/DuarteSantos8/openGym" target="_blank" rel="noopener">{t('Source code')}</a><br />
         {/* Attribution the media licence asks for word for word (agreement §8c), so it is not translated */}

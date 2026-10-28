@@ -3,11 +3,12 @@
 // phone hands the file to the share sheet, the browser downloads it, the same way the JSON backup goes.
 import { useState } from 'react'
 import { useStore } from '../store/useStore.js'
+import { useNutrition } from '../store/useNutrition.js'
 import { useUI } from '../store/useUI.js'
 import { t, tn } from '../lib/i18n.js'
 import { todayISO, fmtDate } from '../lib/format.js'
 import { reportRange } from '../lib/report.js'
-import { workoutsCSV, bodyCSV, csvCounts } from '../lib/export-csv.js'
+import { workoutsCSV, bodyCSV, nutritionCSV, csvCounts } from '../lib/export-csv.js'
 import { MOBILE, shareExport } from '../lib/mobile.js'
 import { Button, Segmented, Row } from './ui.jsx'
 
@@ -21,6 +22,7 @@ export async function saveCSV(text, name) {
 
 export function CsvExportSheet({ close }) {
   const S = useStore(s => s.S)
+  const nutritionDays = useNutrition(s => s.days)
   const toast = useUI(s => s.toast)
   const today = todayISO()
   const [range, setRange] = useState('all')
@@ -28,18 +30,23 @@ export function CsvExportSheet({ close }) {
   const [to, setTo] = useState(today)
   // "All" is no range at all, so a first workout from years ago is in without picking a date.
   const r = range === 'all' ? { from: null, to: null } : reportRange(range, { from, to, today })
-  const counts = csvCounts(S, r)
+  const counts = csvCounts(S, r, nutritionDays)
   const save = async (kind) => {
     const st = useStore.getState().S
-    const text = kind === 'body' ? bodyCSV(st, r) : workoutsCSV(st, r)
-    const name = 'opengym-' + (kind === 'body' ? 'body' : 'workouts') + '-' + today + '.csv'
+    const nutState = useNutrition.getState().days
+    const text = kind === 'body'
+      ? bodyCSV(st, r)
+      : kind === 'nutrition'
+      ? nutritionCSV(nutState, r)
+      : workoutsCSV(st, r)
+    const name = (kind === 'nutrition' ? 'nxtform-nutrition-' : 'opengym-' + kind + '-') + today + '.csv'
     close()
     try { await saveCSV(text, name); toast?.(t('CSV exported')) } catch (e) { /* share sheet dismissed */ }
   }
   return <>
     <h3>{t('Export as spreadsheet (CSV)')}</h3>
     <div className="muted small" style={{ marginBottom: 12 }}>
-      {t('One row per set, for Excel, Sheets, your coach or another app. openGym reads it back too.')}
+      {t('One row per set or food entry, for Excel, Sheets, your coach or another app.')}
     </div>
     <Segmented value={range} onChange={setRange} options={[
       { value: 'all', label: t('All') },
@@ -62,8 +69,12 @@ export function CsvExportSheet({ close }) {
       {tn('{0} workout', '{0} workouts', counts.workouts) + ' · ' + tn('{0} set', '{0} sets', counts.sets)}
     </div>
     <Button icon="share" onClick={() => save('body')}>{t('Body weight & measurements (CSV)')}</Button>
-    <div className="small dim" style={{ margin: '4px 2px 0' }} data-csv-count="body">
+    <div className="small dim" style={{ margin: '4px 2px 12px' }} data-csv-count="body">
       {tn('{0} weigh-in', '{0} weigh-ins', counts.weighIns) + (counts.measurements ? ' · ' + tn('{0} measurement', '{0} measurements', counts.measurements) : '')}
+    </div>
+    <Button icon="share" onClick={() => save('nutrition')}>{t('Nutrition diary (CSV)')}</Button>
+    <div className="small dim" style={{ margin: '4px 2px 0' }} data-csv-count="nutrition">
+      {tn('{0} logged day', '{0} logged days', counts.nutritionDays) + ' · ' + tn('{0} food item', '{0} food items', counts.nutritionEntries)}
     </div>
   </>
 }

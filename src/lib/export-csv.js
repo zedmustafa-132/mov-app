@@ -36,7 +36,7 @@ export function csvField(v) {
 const line = cells => cells.map(csvField).join(',')
 // The BOM is for Excel, which reads a UTF-8 file without one as the system code page and turns
 // every "ü" into two characters. The importer strips it again.
-const csvText = (header, rows) => '﻿' + [line(header), ...rows.map(line)].join('\r\n') + '\r\n'
+const csvText = (header, rows) => '\uFEFF' + [line(header), ...rows.map(line)].join('\r\n') + '\r\n'
 
 // Dot decimal, no grouping, no float noise ("62.5", never "62,5" or "62.50000001").
 const n = v => (Number.isFinite(+v) && v !== '' && v != null ? String(Math.round(+v * 1e6) / 1e6) : '')
@@ -48,7 +48,7 @@ const stamp = ms => {
 }
 
 /**
- * A cardio set's distance, as short as it can be: speed × minutes is 4.708333 km for 25 minutes at
+ * A cardio set's distance, as short as it can be: speed Ã— minutes is 4.708333 km for 25 minutes at
  * 11.3, which nobody wants in a spreadsheet. Two decimals (ten metres) mostly do; a short set
  * gets more, as many as our importer needs to read the same speed back (it rounds to 0.01 km/h).
  */
@@ -154,14 +154,54 @@ export function bodyCSV(S, { from = null, to = null } = {}) {
   return csvText(header, rows)
 }
 
+export const NUTRITION_COLUMNS = [
+  'date', 'meal', 'food_name', 'brand', 'amount', 'unit', 'weight_g',
+  'calories', 'protein_g', 'carbs_g', 'fat_g', 'fiber_g'
+]
+
+/**
+ * Rows of the nutrition diary export. One row per logged food entry.
+ */
+export function nutritionRows(daysObj, { from = null, to = null } = {}) {
+  const inside = d => d && (!from || d >= from) && (!to || d <= to)
+  const rows = []
+  const sortedDates = Object.keys(daysObj || {}).filter(inside).sort()
+  for (const date of sortedDates) {
+    const day = daysObj[date]
+    for (const e of day?.entries || []) {
+      const nutrients = e.nutrients || {}
+      rows.push([
+        date,
+        e.meal || '',
+        e.name || '',
+        e.brand || '',
+        n(e.qty || 1),
+        e.unit || '',
+        n(e.weightGrams || ''),
+        n(nutrients.calories ?? nutrients.kcal ?? 0),
+        n(nutrients.protein ?? nutrients.proteinG ?? 0),
+        n(nutrients.carbs ?? nutrients.carbsG ?? 0),
+        n(nutrients.fat ?? nutrients.fatG ?? 0),
+        n(nutrients.fiber ?? nutrients.fiberG ?? '')
+      ])
+    }
+  }
+  return rows
+}
+
+export const nutritionCSV = (daysObj, range) => csvText(NUTRITION_COLUMNS, nutritionRows(daysObj, range))
+
 /** What each file would hold, for the line under its button: workouts and sets, weigh-ins and measurements. */
-export function csvCounts(S, range) {
+export function csvCounts(S, range, nutritionDays = null) {
   const from = range?.from, to = range?.to
   const inside = d => d && (!from || d >= from) && (!to || d <= to)
+  const nutRows = nutritionDays ? nutritionRows(nutritionDays, range) : []
   return {
     workouts: workoutsIn(S, from, to).length,
     sets: workoutRows(S, range).length,
     weighIns: (S.bodyweight || []).filter(b => inside(b?.d) && b.w > 0).length,
     measurements: (S.measurements || []).filter(m => inside(m?.d)).length,
+    nutritionDays: Object.keys(nutritionDays || {}).filter(d => inside(d) && (nutritionDays[d]?.entries?.length > 0)).length,
+    nutritionEntries: nutRows.length,
   }
 }

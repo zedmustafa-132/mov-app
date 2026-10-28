@@ -31,6 +31,9 @@ import {
 } from '../lib/effort.js'
 import { anchorsByWorkout, resolveSetRir } from '../lib/recovery.js'
 import { Button, Segmented, SelectRow } from '../components/ui.jsx'
+import { useNutrition } from '../store/useNutrition.js'
+import { calculateNutrientSum } from '../lib/nutrition/totals.js'
+import { weeklySummarySheet } from '../components/WeeklySummaryModal.jsx'
 import { tappable } from '../lib/use-sheet-keyboard.js'
 import { isWarmupRow } from '../lib/workout-model.js'
 
@@ -471,6 +474,81 @@ export function WeeklyPlanVolume({ S }) {
   </div>
 }
 
+
+export function NutritionHistoryCard({ S }) {
+  const nutritionDays = useNutrition(s => s.days)
+  const [range, setRange] = useState(30)
+  const now = useNow(nutritionDays)
+  const nav = useNavigate()
+
+  const calTarget = Number(S?.targets?.dailyCalories) || 2000
+  const protTarget = Number(S?.targets?.macros?.proteinG) || 150
+  const carbTarget = Number(S?.targets?.macros?.carbsG) || 200
+  const fatTarget = Number(S?.targets?.macros?.fatG) || 65
+
+  const from = range ? now - range * 86400000 : 0
+
+  const daysInRange = Object.entries(nutritionDays || {})
+    .filter(([d, data]) => {
+      const ts = new Date(d + 'T12:00:00').getTime()
+      return (from === 0 || ts >= from) && (data?.entries?.length > 0)
+    })
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+
+  const points = daysInRange.map(([d, data]) => {
+    const totals = calculateNutrientSum(data.entries)
+    const ts = new Date(d + 'T12:00:00').getTime()
+    return {
+      t: ts,
+      y: totals.calories,
+      d,
+      note: `P: ${totals.protein}g · C: ${totals.carbs}g · F: ${totals.fat}g`
+    }
+  })
+
+  let sumCal = 0, sumProt = 0, sumCarb = 0, sumFat = 0
+  for (const [, data] of daysInRange) {
+    const totals = calculateNutrientSum(data.entries)
+    sumCal += totals.calories
+    sumProt += totals.protein
+    sumCarb += totals.carbs
+    sumFat += totals.fat
+  }
+  const count = daysInRange.length
+  const avgCal = count > 0 ? Math.round(sumCal / count) : 0
+  const avgProt = count > 0 ? Math.round((sumProt / count) * 10) / 10 : 0
+  const avgCarb = count > 0 ? Math.round((sumCarb / count) * 10) / 10 : 0
+  const avgFat = count > 0 ? Math.round((sumFat / count) * 10) / 10 : 0
+
+  return (
+    <div className="card" data-nutrition-history>
+      <div className="row between" style={{ marginBottom: 8, alignItems: 'center' }}>
+        <h2 style={{ margin: 0 }}>{t('Nutrition history')}</h2>
+        <Button size="sm" variant="ghost" onClick={() => nav('/food')}>{t('Diary')}</Button>
+      </div>
+      <Segmented className="seg-range" value={range} onChange={setRange} options={rangeOptions()} />
+      {points.length > 0 ? (
+        <>
+          <div className="chart"><LineChart points={points} h={160} unit="kcal" goal={calTarget} color="var(--acc)" /></div>
+          <div className="row between small" style={{ marginTop: 8, background: 'var(--surface-2)', padding: '8px 12px', borderRadius: 'var(--r-sm)' }}>
+            <div>
+              <span className="muted">{t('Avg Daily')}: </span>
+              <strong>{avgCal} kcal</strong> <span className="small muted">({count} {t('days')})</span>
+            </div>
+            <div>
+              <span style={{ color: 'var(--blue)', fontWeight: 600 }}>P:</span> {avgProt}g · <span style={{ color: 'var(--orange)', fontWeight: 600 }}>C:</span> {avgCarb}g · <span style={{ color: 'var(--yellow)', fontWeight: 600 }}>F:</span> {avgFat}g
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="muted small" style={{ padding: '16px 0', textAlign: 'center' }}>
+          {t('No food entries in this period. Log your meals in the Food tab to see calorie and macro trends.')}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Stats() {
   const nav = useNavigate()
   const S = useStore(s => s.S)
@@ -723,6 +801,7 @@ export default function Stats() {
   return <>
     <div className="hdr"><SeasonDeco spot="stats-hdr" /><div><h1>{t('Stats')}</h1><div className="sub">{t('Progress & history')}</div></div>
       <div className="row" style={{ gap: 8 }}>
+        <button className="iconbtn" onClick={weeklySummarySheet} aria-label={t('Weekly summary')} title={t('Weekly summary')}><Icon name="clipboard" /></button>
         <button className="iconbtn" onClick={reportSheet} aria-label={t('Performance report')} title={t('Performance report')}><Icon name="note" /></button>
         <button className="iconbtn" onClick={() => nav('/history')} aria-label={t('History')}><Icon name="history" /></button>
       </div></div>
@@ -769,6 +848,8 @@ export default function Stats() {
       <Button size="sm" variant="tinted" trailingIcon="chevronRight" style={{ flexShrink: 0 }} onClick={() => nav('/measurements')}>{t('Open')}</Button>
     </div>
     {(hasEffort(S) || hasEstimableEffort(S)) && <EffortCard S={S} />}
+
+    <NutritionHistoryCard S={S} />
 
     <div className="cols">
       <div className="card">

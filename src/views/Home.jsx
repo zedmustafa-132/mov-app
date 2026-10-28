@@ -25,6 +25,7 @@ import { computeDayTotals, getLocalDateString } from '../lib/nutrition/totals.js
 import { FoodSearchSheet } from '../components/FoodSearchSheet.jsx'
 import { useGamification } from '../lib/gamification/useGamification.js'
 import { CharacterSheetModal } from '../components/CharacterSheetModal.jsx'
+import { weeklySummarySheet } from '../components/WeeklySummaryModal.jsx'
 
 // Home = what to do now + a quick glance. Deep charts & history live in Stats.
 export default function Home() {
@@ -226,9 +227,11 @@ export default function Home() {
         {t('No rotation yet. Add routines to it in Plan.')}
         <div style={{ marginTop: 10 }}><Button size="sm" variant="tinted" onClick={() => nav('/plan')}>{t('Set up in Plan')}</Button></div>
       </div>) : <>
-        <div className="row between" style={{ marginBottom: 8 }}>
+        <div className="row between" style={{ marginBottom: 8, alignItems: 'center' }}>
           <button className="iconbtn" style={{ width: 30, height: 30, fontSize: 15 }} onClick={() => setWeekOffset(w => w - 1)} aria-label={t('Previous week')}><Icon name="chevronLeft" /></button>
-          <div className="small muted" style={{ fontWeight: 500 }}>{wkLabel}</div>
+          <button className="textbtn small muted" style={{ fontWeight: 600, cursor: 'pointer', background: 'none', border: 'none', padding: '2px 6px' }} onClick={weeklySummarySheet}>
+            {wkLabel} · <span style={{ color: 'var(--acc)' }}>{t('Summary')}</span>
+          </button>
           <button className="iconbtn" style={{ width: 30, height: 30, fontSize: 15 }} onClick={() => setWeekOffset(w => w + 1)} aria-label={t('Next week')}><Icon name="chevronRight" /></button>
         </div>
         <div className="week">{strip}</div>
@@ -311,6 +314,7 @@ export default function Home() {
         </div>
         <div className="row" style={{ gap: 8 }}>
           <Button size="sm" icon="plus" onClick={() => openSheet(close => <FoodSearchSheet date={todayStr} close={close} />)}>{t('Log')}</Button>
+          <Button size="sm" variant="ghost" onClick={weeklySummarySheet}>{t('Summary')}</Button>
           <Button size="sm" variant="ghost" onClick={() => nav('/food')}>{t('Diary')}</Button>
         </div>
       </div>

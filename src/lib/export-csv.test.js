@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { csvField, workoutsCSV, workoutRows, bodyCSV, WORKOUT_COLUMNS } from './export-csv.js'
+import { csvField, workoutsCSV, workoutRows, bodyCSV, WORKOUT_COLUMNS, nutritionCSV, nutritionRows, NUTRITION_COLUMNS } from './export-csv.js'
 import { parseCSV, parseWorkoutCSV, parseBodyweight, parseImport, mergeImport } from './import-csv.js'
 
 // Local times, the way the app stores a workout's start and end.
@@ -65,7 +65,7 @@ describe('the workout CSV', () => {
   const body = rows.slice(1)
 
   it('has one header and one row per completed set, CRLF and a BOM for Excel', () => {
-    expect(text.startsWith('﻿')).toBe(true)
+    expect(text.startsWith('\uFEFF')).toBe(true)
     expect(text).toContain('\r\n')
     expect(rows[0]).toEqual(WORKOUT_COLUMNS)
     // 3 bench (the unticked one is left out) + 2 raises + 1 curl, 2 drops, 2 sides + 2 holds + 1 grip + 2 cardio + 1 squat
@@ -224,5 +224,48 @@ describe('the body CSV', () => {
 
   it('is just the header with nothing logged', () => {
     expect(parseCSV(bodyCSV({ unit: 'kg' }))).toEqual([['date', 'weight_kg']])
+  })
+})
+
+describe('the nutrition CSV', () => {
+  const mockDays = {
+    '2026-10-26': {
+      entries: [
+        {
+          meal: 'breakfast',
+          name: 'Oatmeal',
+          brand: 'Quaker',
+          qty: 1,
+          unit: 'cup',
+          weightGrams: 80,
+          nutrients: { calories: 300, protein: 10, carbs: 54, fat: 5, fiber: 8 }
+        },
+        {
+          meal: 'lunch',
+          name: 'Chicken Breast',
+          brand: '',
+          qty: 200,
+          unit: 'g',
+          weightGrams: 200,
+          nutrients: { calories: 330, protein: 62, carbs: 0, fat: 7 }
+        }
+      ]
+    }
+  }
+
+  it('exports one row per food item with complete nutrient breakdown', () => {
+    const text = nutritionCSV(mockDays)
+    const rows = parseCSV(text)
+    expect(rows[0]).toEqual(NUTRITION_COLUMNS)
+    expect(rows.slice(1)).toEqual([
+      ['2026-10-26', 'breakfast', 'Oatmeal', 'Quaker', '1', 'cup', '80', '300', '10', '54', '5', '8'],
+      ['2026-10-26', 'lunch', 'Chicken Breast', '', '200', 'g', '200', '330', '62', '0', '7', '']
+    ])
+  })
+
+  it('handles empty nutrition store with just headers', () => {
+    const text = nutritionCSV({})
+    const rows = parseCSV(text)
+    expect(rows).toEqual([NUTRITION_COLUMNS])
   })
 })
