@@ -25,6 +25,7 @@ import { computeDayTotals, getLocalDateString } from '../lib/nutrition/totals.js
 import { FoodSearchSheet } from '../components/FoodSearchSheet.jsx'
 import { useGamification } from '../lib/gamification/useGamification.js'
 import { CharacterSheetModal } from '../components/CharacterSheetModal.jsx'
+import { LeaderboardModal } from '../components/LeaderboardModal.jsx'
 import { weeklySummarySheet } from '../components/WeeklySummaryModal.jsx'
 import { getActiveTargets } from '../lib/targets.js'
 
@@ -52,6 +53,10 @@ export default function Home() {
   const remainingKcal = calTarget - nutritionTotals.calories
   const { levelInfo, characterStats, dailyQuests, streakDays, streakFreezes } = useGamification()
   const openCharacterSheet = () => openSheet(close => <CharacterSheetModal close={close} />)
+  const openLeaderboard = (e) => {
+    e?.stopPropagation?.()
+    openSheet(close => <LeaderboardModal close={close} />)
+  }
   // A weekday can hold several routines. `todayRoutines` is the whole day; `routine` is the
   // first, kept for the one-routine glyph. The derived session name joins them (§9).
   const todayRoutines = effectiveRoutines(S, todayISO())
@@ -157,6 +162,26 @@ export default function Home() {
         </div>
 
         <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+          <button
+            className="tag"
+            style={{
+              background: 'rgba(234, 179, 8, 0.15)',
+              color: 'var(--amber, #f59e0b)',
+              border: '1px solid rgba(234, 179, 8, 0.3)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '3px 8px',
+              borderRadius: 8,
+              fontWeight: 700
+            }}
+            onClick={openLeaderboard}
+            aria-label="Open Leaderboard"
+          >
+            <Icon name="trophy" size={13} />
+            <span>{t('Rankings')}</span>
+          </button>
           <span className="tag" style={{ color: 'var(--acc)', background: 'var(--acc-soft)', fontWeight: 700 }}>
             LVL {levelInfo.level}
           </span>

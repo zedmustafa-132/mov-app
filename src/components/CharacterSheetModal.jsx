@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import { useGamification } from '../lib/gamification/useGamification.js'
+import { useUI } from '../store/useUI.js'
+import { LeaderboardModal } from './LeaderboardModal.jsx'
 import Icon from './Icon.jsx'
 import { Segmented } from './ui.jsx'
 import { t } from '../lib/i18n.js'
 
 export function CharacterSheetModal({ close }) {
+  const openSheet = useUI(s => s.openSheet)
   const { levelInfo, characterStats, badges, streakDays, streakFreezes } = useGamification()
   const [tab, setTab] = useState('attributes') // 'attributes' | 'badges' | 'forms'
 
@@ -33,7 +36,16 @@ export function CharacterSheetModal({ close }) {
           </span>
           <h3 style={{ margin: 0 }}>{t('Character Sheet')}</h3>
         </div>
-        <button className="iconbtn" onClick={close} aria-label={t('Close')}><Icon name="xmark" /></button>
+        <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+          <button
+            className="btn xs outline"
+            style={{ borderRadius: 8, padding: '4px 8px', color: 'var(--amber, #f59e0b)', borderColor: 'rgba(234, 179, 8, 0.4)', fontWeight: 700 }}
+            onClick={() => { close(); openSheet(c => <LeaderboardModal close={c} />) }}
+          >
+            🏆 {t('Leaderboard')}
+          </button>
+          <button className="iconbtn" onClick={close} aria-label={t('Close')}><Icon name="xmark" /></button>
+        </div>
       </div>
 
       {/* Form & Level Banner */}
