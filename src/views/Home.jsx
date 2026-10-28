@@ -19,6 +19,10 @@ import { dayNoteOf } from '../lib/day-notes.js'
 import { weighInAt } from '../lib/bodyweight.js'
 import WeightRate from '../components/WeightRate.jsx'
 import { SeasonDeco } from '../components/Seasonal.jsx'
+import { useUI } from '../store/useUI.js'
+import { useNutrition } from '../store/useNutrition.js'
+import { computeDayTotals, getLocalDateString } from '../lib/nutrition/totals.js'
+import { FoodSearchSheet } from '../components/FoodSearchSheet.jsx'
 
 // Home = what to do now + a quick glance. Deep charts & history live in Stats.
 export default function Home() {
@@ -27,9 +31,20 @@ export default function Home() {
   const user = useStore(s => s.user)
   // The banner switched off and the sync stuck: a dot on the gear (Settings → Show connection status).
   const trouble = useConnectionTrouble()
+  const openSheet = useUI(s => s.openSheet)
   const [weekOffset, setWeekOffset] = useState(0)
 
   const today = new Date()
+  const todayStr = todayISO()
+  const nutritionDays = useNutrition(s => s.days)
+  const todayNutrition = nutritionDays[todayStr] || { entries: [], waterMl: 0 }
+  const nutritionTotals = computeDayTotals(todayNutrition.entries || [])
+  const calTarget = S.targets?.dailyCalories || 2000
+  const protTarget = S.targets?.proteinGrams || 150
+  const carbTarget = S.targets?.carbsGrams || 200
+  const fatTarget = S.targets?.fatGrams || 65
+  const waterTarget = S.targets?.waterMl || 3000
+  const remainingKcal = calTarget - nutritionTotals.calories
   // A weekday can hold several routines. `todayRoutines` is the whole day; `routine` is the
   // first, kept for the one-routine glyph. The derived session name joins them (§9).
   const todayRoutines = effectiveRoutines(S, todayISO())
@@ -192,6 +207,48 @@ export default function Home() {
         <div style={{ height: 8 }} /><Button onClick={() => nav('/plan')}>{t('Build my own plan')}</Button>
       </div>
     )}
+
+    {/* Nutrition & Calorie Card */}
+    <div className="card">
+      <div className="row between" style={{ marginBottom: 6 }}>
+        <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+          <span className="lrow-i" style={{ background: 'var(--acc)', color: 'var(--on-acc)', width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="utensils" style={{ fontSize: 15 }} />
+          </span>
+          <h2 style={{ margin: 0 }}>{t('Nutrition')}</h2>
+        </div>
+        <div className="row" style={{ gap: 8 }}>
+          <Button size="sm" icon="plus" onClick={() => openSheet(close => <FoodSearchSheet date={todayStr} close={close} />)}>{t('Log')}</Button>
+          <Button size="sm" variant="ghost" onClick={() => nav('/food')}>{t('Diary')}</Button>
+        </div>
+      </div>
+
+      <div className="row between" style={{ alignItems: 'baseline', marginTop: 4 }}>
+        <div className="big" style={{ fontSize: 26, fontWeight: 700 }}>
+          {remainingKcal >= 0 ? remainingKcal : Math.abs(remainingKcal)}
+          <span className="small muted" style={{ fontSize: 13, fontWeight: 500, marginInlineStart: 5 }}>
+            {remainingKcal >= 0 ? t('kcal remaining') : t('kcal over')}
+          </span>
+        </div>
+        <span className="small muted">{nutritionTotals.calories} / {calTarget} kcal</span>
+      </div>
+
+      <div style={{ width: '100%', height: 8, background: 'var(--surface-3)', borderRadius: 4, overflow: 'hidden', margin: '8px 0 12px' }}>
+        <div style={{
+          height: '100%',
+          width: `${Math.min(100, Math.round((nutritionTotals.calories / calTarget) * 100))}%`,
+          background: remainingKcal >= 0 ? 'var(--acc)' : 'var(--orange)',
+          borderRadius: 4
+        }} />
+      </div>
+
+      <div className="row between small" style={{ background: 'var(--surface-2)', padding: '8px 12px', borderRadius: 'var(--r-sm)' }}>
+        <div><span style={{ color: 'var(--blue)', fontWeight: 600 }}>P:</span> {nutritionTotals.protein} / {protTarget}g</div>
+        <div><span style={{ color: 'var(--orange)', fontWeight: 600 }}>C:</span> {nutritionTotals.carbs} / {carbTarget}g</div>
+        <div><span style={{ color: 'var(--yellow)', fontWeight: 600 }}>F:</span> {nutritionTotals.fat} / {fatTarget}g</div>
+        <div><span style={{ color: 'var(--teal)', fontWeight: 600 }}><Icon name="drop" style={{ fontSize: 12, verticalAlign: 'middle' }} /></span> {todayNutrition.waterMl || 0}ml</div>
+      </div>
+    </div>
 
     {S.showWeightCard !== false && <div className="card">
       <div className="row between bw-head" style={{ marginBottom: 6 }}>

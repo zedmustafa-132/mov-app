@@ -19,6 +19,8 @@ const LABELS = {
   'auth.register.ok': 'Created a profile',
   'auth.register.fail': 'Profile creation failed',
   'auth.register.denied': 'Signup refused',
+  'auth.google.register': 'Created an account with Google',
+  'auth.google.login': 'Signed in with Google',
   'auth.logout': 'Signed out',
   'auth.logout.all': 'Signed out everywhere',
   // Settings → "Delete my account": the profile removed itself and everything of theirs.
