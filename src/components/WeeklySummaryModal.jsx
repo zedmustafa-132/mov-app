@@ -4,6 +4,7 @@ import { useStore } from '../store/useStore.js'
 import { useNutrition } from '../store/useNutrition.js'
 import { useGamification } from '../lib/gamification/useGamification.js'
 import { calculateWeeklySummary, getWeekRange } from '../lib/weekly-summary.js'
+import { getActiveTargets } from '../lib/targets.js'
 import { fmtNum, fmtDate, fmtVol, todayISO } from '../lib/format.js'
 import { t } from '../lib/i18n.js'
 import { useUI } from '../store/useUI.js'
@@ -25,7 +26,7 @@ export function WeeklySummaryModal({ close }) {
     workouts: S.workouts || [],
     nutritionDays: nutritionDays || {},
     bodyweight: S.bodyweight || [],
-    targets: S.targets || {},
+    targets: getActiveTargets(S),
     weekStart: S.weekStart ?? 1,
     referenceDate: refIso,
     streak: streakDays,

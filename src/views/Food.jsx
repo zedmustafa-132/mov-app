@@ -12,6 +12,7 @@ import { PhotoEstimateSheet } from '../components/PhotoEstimateSheet.jsx'
 import { Button } from '../components/ui.jsx'
 import Icon from '../components/Icon.jsx'
 import { t, dateLocale } from '../lib/i18n.js'
+import { getActiveTargets } from '../lib/targets.js'
 
 export default function Food() {
   const S = useStore(s => s.S)
@@ -40,11 +41,12 @@ export default function Food() {
   }, [dayData.entries])
 
   // User nutrition targets (from Onboarding Plan Engine or defaults)
-  const calorieTarget = S.targets?.dailyCalories || 2000
-  const proteinTarget = S.targets?.proteinGrams || 150
-  const carbTarget = S.targets?.carbsGrams || 200
-  const fatTarget = S.targets?.fatGrams || 65
-  const waterTarget = S.targets?.waterMl || 3000
+  const activeTargets = getActiveTargets(S)
+  const calorieTarget = activeTargets.dailyCalories
+  const proteinTarget = activeTargets.proteinGrams
+  const carbTarget = activeTargets.carbsGrams
+  const fatTarget = activeTargets.fatGrams
+  const waterTarget = activeTargets.waterMl
 
   const remainingCalories = calorieTarget - totals.calories
   const caloriePct = Math.min(100, Math.round((totals.calories / calorieTarget) * 100))

@@ -346,3 +346,73 @@ export function createTargetHistoryEntry(plan, { effectiveFrom = null, manualOve
     createdAt: new Date().toISOString()
   }
 }
+
+/**
+ * Resolves active daily nutrition targets from store state, seamlessly handling
+ * legacy dailyTargets, targetHistory entries, or user-overridden targets.
+ */
+export function getActiveTargets(S) {
+  const latestHistory = Array.isArray(S?.targetHistory) && S.targetHistory.length > 0
+    ? S.targetHistory[S.targetHistory.length - 1]
+    : null
+
+  const dailyCalories = Number(
+    S?.targets?.dailyCalories ||
+    S?.dailyTargets?.calories ||
+    latestHistory?.calories ||
+    2000
+  )
+
+  const proteinGrams = Number(
+    S?.targets?.proteinGrams ||
+    S?.targets?.macros?.proteinG ||
+    S?.dailyTargets?.proteinG ||
+    latestHistory?.proteinG ||
+    150
+  )
+
+  const carbsGrams = Number(
+    S?.targets?.carbsGrams ||
+    S?.targets?.macros?.carbsG ||
+    S?.dailyTargets?.carbsG ||
+    latestHistory?.carbsG ||
+    200
+  )
+
+  const fatGrams = Number(
+    S?.targets?.fatGrams ||
+    S?.targets?.macros?.fatG ||
+    S?.dailyTargets?.fatG ||
+    latestHistory?.fatG ||
+    65
+  )
+
+  const waterMl = Number(
+    S?.targets?.waterMl ||
+    S?.dailyTargets?.waterMl ||
+    latestHistory?.waterMl ||
+    3000
+  )
+
+  const fiberGrams = Number(
+    S?.targets?.fiberGrams ||
+    S?.dailyTargets?.fibreG ||
+    latestHistory?.fibreG ||
+    30
+  )
+
+  return {
+    dailyCalories,
+    proteinGrams,
+    carbsGrams,
+    fatGrams,
+    waterMl,
+    fiberGrams,
+    macros: {
+      proteinG: proteinGrams,
+      carbsG: carbsGrams,
+      fatG: fatGrams
+    }
+  }
+}
+

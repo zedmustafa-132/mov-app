@@ -36,6 +36,7 @@ import { calculateNutrientSum } from '../lib/nutrition/totals.js'
 import { weeklySummarySheet } from '../components/WeeklySummaryModal.jsx'
 import { tappable } from '../lib/use-sheet-keyboard.js'
 import { isWarmupRow } from '../lib/workout-model.js'
+import { getActiveTargets } from '../lib/targets.js'
 
 // Set 1 to 5 on the per-set chart — system colours, so each line keeps its hue in dark mode.
 const SET_COLORS = ['var(--blue)', 'var(--green)', 'var(--orange)', 'var(--purple)', 'var(--pink)']

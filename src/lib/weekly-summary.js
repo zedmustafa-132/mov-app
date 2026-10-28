@@ -61,9 +61,9 @@ export function calculateWeeklySummary({
 
   // Targets with realistic defaults
   const calorieTarget = Number(targets.dailyCalories) || 2000
-  const proteinTarget = Number(targets.macros?.proteinG) || 150
-  const carbTarget = Number(targets.macros?.carbsG) || 200
-  const fatTarget = Number(targets.macros?.fatG) || 65
+  const proteinTarget = Number(targets.proteinGrams || targets.macros?.proteinG) || 150
+  const carbTarget = Number(targets.carbsGrams || targets.macros?.carbsG) || 200
+  const fatTarget = Number(targets.fatGrams || targets.macros?.fatG) || 65
   const waterTargetMl = Number(targets.waterMl) || 2500
 
   // 1. Analyze Nutrition

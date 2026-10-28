@@ -67,6 +67,19 @@ export default function Onboarding() {
         updatedAt: new Date().toISOString()
       }
       draft.targetHistory = targetHistory
+      draft.targets = {
+        dailyCalories: plan.calories,
+        proteinGrams: plan.macros.proteinG,
+        carbsGrams: plan.macros.carbsG,
+        fatGrams: plan.macros.fatG,
+        waterMl: plan.health.waterMl,
+        fiberGrams: plan.health.fibreG,
+        macros: {
+          proteinG: plan.macros.proteinG,
+          carbsG: plan.macros.carbsG,
+          fatG: plan.macros.fatG
+        }
+      }
       draft.dailyTargets = {
         calories: plan.calories,
         proteinG: plan.macros.proteinG,

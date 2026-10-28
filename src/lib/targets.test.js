@@ -7,7 +7,8 @@ import {
   calculateHealthTargets,
   matchStarterWorkout,
   generatePersonalPlan,
-  createTargetHistoryEntry
+  createTargetHistoryEntry,
+  getActiveTargets
 } from './targets.js'
 
 describe('Plan Engine — targets.js', () => {
@@ -177,6 +178,68 @@ describe('Plan Engine — targets.js', () => {
       expect(history.calories).toBe(2420)
       expect(history.proteinG).toBe(180)
       expect(history.effectiveFrom).toBeDefined()
+    })
+  })
+
+  describe('getActiveTargets resolution', () => {
+    it('resolves dailyCalories and macros from targets property when present', () => {
+      const state = {
+        targets: {
+          dailyCalories: 2500,
+          proteinGrams: 180,
+          carbsGrams: 260,
+          fatGrams: 75,
+          waterMl: 3200
+        }
+      }
+      const active = getActiveTargets(state)
+      expect(active.dailyCalories).toBe(2500)
+      expect(active.proteinGrams).toBe(180)
+      expect(active.carbsGrams).toBe(260)
+      expect(active.fatGrams).toBe(75)
+      expect(active.waterMl).toBe(3200)
+    })
+
+    it('falls back to dailyTargets when targets is missing', () => {
+      const state = {
+        dailyTargets: {
+          calories: 2500,
+          proteinG: 175,
+          carbsG: 250,
+          fatG: 70,
+          waterMl: 3100,
+          fibreG: 35
+        }
+      }
+      const active = getActiveTargets(state)
+      expect(active.dailyCalories).toBe(2500)
+      expect(active.proteinGrams).toBe(175)
+      expect(active.carbsGrams).toBe(250)
+      expect(active.fatGrams).toBe(70)
+      expect(active.waterMl).toBe(3100)
+      expect(active.fiberGrams).toBe(35)
+    })
+
+    it('falls back to latest targetHistory entry when targets and dailyTargets are missing', () => {
+      const state = {
+        targetHistory: [
+          { calories: 2200, proteinG: 150, carbsG: 200, fatG: 60 },
+          { calories: 2500, proteinG: 180, carbsG: 260, fatG: 75, waterMl: 3300 }
+        ]
+      }
+      const active = getActiveTargets(state)
+      expect(active.dailyCalories).toBe(2500)
+      expect(active.proteinGrams).toBe(180)
+      expect(active.waterMl).toBe(3300)
+    })
+
+    it('returns 2000 kcal default when no targets exist in state', () => {
+      const active = getActiveTargets({})
+      expect(active.dailyCalories).toBe(2000)
+      expect(active.proteinGrams).toBe(150)
+      expect(active.carbsGrams).toBe(200)
+      expect(active.fatGrams).toBe(65)
+      expect(active.waterMl).toBe(3000)
     })
   })
 })

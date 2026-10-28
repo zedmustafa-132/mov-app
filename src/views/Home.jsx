@@ -26,6 +26,7 @@ import { FoodSearchSheet } from '../components/FoodSearchSheet.jsx'
 import { useGamification } from '../lib/gamification/useGamification.js'
 import { CharacterSheetModal } from '../components/CharacterSheetModal.jsx'
 import { weeklySummarySheet } from '../components/WeeklySummaryModal.jsx'
+import { getActiveTargets } from '../lib/targets.js'
 
 // Home = what to do now + a quick glance. Deep charts & history live in Stats.
 export default function Home() {
@@ -42,11 +43,12 @@ export default function Home() {
   const nutritionDays = useNutrition(s => s.days)
   const todayNutrition = nutritionDays[todayStr] || { entries: [], waterMl: 0 }
   const nutritionTotals = computeDayTotals(todayNutrition.entries || [])
-  const calTarget = S.targets?.dailyCalories || 2000
-  const protTarget = S.targets?.proteinGrams || 150
-  const carbTarget = S.targets?.carbsGrams || 200
-  const fatTarget = S.targets?.fatGrams || 65
-  const waterTarget = S.targets?.waterMl || 3000
+  const activeTargets = getActiveTargets(S)
+  const calTarget = activeTargets.dailyCalories
+  const protTarget = activeTargets.proteinGrams
+  const carbTarget = activeTargets.carbsGrams
+  const fatTarget = activeTargets.fatGrams
+  const waterTarget = activeTargets.waterMl
   const remainingKcal = calTarget - nutritionTotals.calories
   const { levelInfo, characterStats, dailyQuests, streakDays, streakFreezes } = useGamification()
   const openCharacterSheet = () => openSheet(close => <CharacterSheetModal close={close} />)

@@ -333,6 +333,24 @@ function loadState() {
       const saved = JSON.parse(raw)
       const s = sanitizeAccent(Object.assign(clone(DEF), saved))
       if (!saved.lang) s.lang = detectedLang()
+      if (!s.targets?.dailyCalories && (s.dailyTargets?.calories || s.targetHistory?.length)) {
+        const lastH = Array.isArray(s.targetHistory) && s.targetHistory.length ? s.targetHistory[s.targetHistory.length - 1] : null
+        const cal = s.dailyTargets?.calories || lastH?.calories || 2000
+        const prot = s.dailyTargets?.proteinG || lastH?.proteinG || 150
+        const carb = s.dailyTargets?.carbsG || lastH?.carbsG || 200
+        const fat = s.dailyTargets?.fatG || lastH?.fatG || 65
+        const water = s.dailyTargets?.waterMl || lastH?.waterMl || 3000
+        const fiber = s.dailyTargets?.fibreG || lastH?.fibreG || 30
+        s.targets = {
+          dailyCalories: cal,
+          proteinGrams: prot,
+          carbsGrams: carb,
+          fatGrams: fat,
+          waterMl: water,
+          fiberGrams: fiber,
+          macros: { proteinG: prot, carbsG: carb, fatG: fat }
+        }
+      }
       return s
     }
   } catch (e) { /* ignore */ }
