@@ -1006,6 +1006,13 @@ export default function Settings({ page = null, find = null, via = null, entryKe
       {/* The version, where the support template tells people to look for it. On the phone
           build there is no address bar and no about box, so without this there is no way to tell
           which build you are running, or whether an update actually installed. */}
+      <Section title={t('Privacy & Feedback')}>
+        <Row icon="shield" iconTint="var(--teal)" title={t('Privacy Policy')} subtitle={t('PIPEDA, Quebec Law 25 & GDPR compliant')} accessory="chevron"
+          onClick={() => window.open('https://github.com/DuarteSantos8/openGym/blob/master/docs/PRIVACY_POLICY.md', '_blank', 'noopener')} />
+        <Row icon="envelope" iconTint="var(--blue)" title={t('Send feedback')} subtitle={t('Bug reports, suggestions and questions')} accessory="chevron"
+          onClick={() => window.open('mailto:feedback@nxtform.com?subject=NXT%20FORM%20Feedback', '_blank')} />
+      </Section>
+
       <div className="dim small sp-version" style={{ lineHeight: 1.6 }}>
         <strong>NXT FORM</strong> v{__APP_VERSION__} · {t('free & open source (AGPL v3)')}<br />
         <a href="https://github.com/DuarteSantos8/openGym" target="_blank" rel="noopener">{t('Upstream openGym repository (AGPL v3)')}</a><br />
