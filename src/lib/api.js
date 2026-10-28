@@ -431,6 +431,10 @@ export async function passwordLogin(name, password) {
 export async function passwordRegister(name, password, code, email) {
   return (await post('/api/register/password', { name, password, code: code || '', ...(email ? { email } : {}) })).user
 }
+export async function googleAuth(credential) {
+  return (await post('/api/auth/google', { credential })).user
+}
+
 export async function passwordResetRedeem(name, code, next) {
   return (await post('/api/login/password-reset', { name, code, next })).user
 }
