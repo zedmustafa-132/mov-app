@@ -57,8 +57,8 @@ describe('Login: a code from another device', () => {
     mocks.config = { allow_guest: true }
     const page = mount(<Login />)
     const all = buttons(page)
-    expect(all.indexOf('Use a code from your other device')).toBe(all.indexOf('Create new profile') + 1)
-    act(() => button(page, 'Use a code from your other device').click())
+    expect(all.indexOf('Link device')).toBeGreaterThan(all.indexOf('Create profile'))
+    act(() => button(page, 'Link device').click())
     const sheet = mount(mocks.sheets[0](() => {}))
     expect(sheet.querySelector('h3').textContent).toBe('Add this device')
     expect(sheet.querySelector('input[placeholder="Code from your other device"]')).toBeTruthy()
@@ -68,8 +68,8 @@ describe('Login: a code from another device', () => {
 
   it('is not offered in a browser that cannot make a passkey, with or without passwords', () => {
     mocks.webauthn = false
-    expect(buttons(mount(<Login />))).not.toContain('Use a code from your other device')
+    expect(buttons(mount(<Login />))).not.toContain('Link device')
     mocks.config = { password_login: true }
-    expect(buttons(mount(<Login />))).not.toContain('Use a code from your other device')
+    expect(buttons(mount(<Login />))).not.toContain('Link device')
   })
 })

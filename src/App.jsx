@@ -2,6 +2,8 @@ import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState } from 're
 import { hideBoot } from './lib/boot.js'
 import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation, useNavigationType } from 'react-router-dom'
 import { useStore } from './store/useStore.js'
+import { useNutrition } from './store/useNutrition.js'
+import { startNutritionAccounts } from './lib/nutrition/account-sync.js'
 import { useUI } from './store/useUI.js'
 import { bindUI } from './components/ui.jsx'
 import { setWeightDecimals } from './lib/format.js'
@@ -38,13 +40,15 @@ import SyncBanner from './components/SyncBanner.jsx'
 import RestTimer from './components/RestTimer.jsx'
 import TimerFlash from './components/TimerFlash.jsx'
 import { SeasonalLayer } from './components/Seasonal.jsx'
+import BackgroundTexture from './components/BackgroundTexture.jsx'
+import { GameRewards } from './components/PlayerProgress.jsx'
 import { openDeviceLinkRedeem } from './components/Passkeys.jsx'
 import { useAnimPacksBoot } from './components/Animations.jsx'
 import Login from './views/Login.jsx'
 import Onboarding from './views/Onboarding.jsx'
 import MobileOnboarding from './views/MobileOnboarding.jsx'
 import PermissionSteps from './views/PermissionSteps.jsx'
-import Home from './views/Home.jsx'
+import Home, { HomeOverview } from './views/Home.jsx'
 import Plan from './views/Plan.jsx'
 import Workout from './views/Workout.jsx'
 
@@ -109,6 +113,7 @@ function applyPrefs(theme, accent) {
 }
 
 function Shell() {
+  useEffect(() => startNutritionAccounts(useStore, useNutrition), [])
   const navigate = useNavigate()
   const loc = useLocation()
   const navType = useNavigationType()
@@ -279,7 +284,7 @@ function Shell() {
   // The first-launch card has no tabs either: they changed the route behind it.
   const authed = user || isGuest
   const needsPlanOnboarding = authed && !S.profile?.onboardedAt && !S.onboardedAt
-  const noTabs = inWorkout || loc.pathname === '/coach' || needsMobileOnboarding || permSteps || needsPlanOnboarding
+  const noTabs = inWorkout || loc.pathname === '/coach' || loc.pathname === '/setup' || needsMobileOnboarding || permSteps || needsPlanOnboarding
 
   // The boot screen in index.html covers the start; it goes once there is something to show.
   useEffect(() => { if (ready || authed) hideBoot() }, [ready, authed])
@@ -294,6 +299,8 @@ function Shell() {
   const view = l => (!authed ? <Login /> : needsMobileOnboarding ? <MobileOnboarding /> : permSteps ? <PermissionSteps /> : needsPlanOnboarding ? <Onboarding /> : (
     <Routes location={l}>
       <Route path="/home" element={<Home />} />
+      <Route path="/setup" element={<Onboarding />} />
+      <Route path="/overview" element={<HomeOverview />} />
       <Route path="/food" element={<Food />} />
       {/* Gym check-in — switched off in Settings, the route falls through to the
           catch-all redirect below. */}
@@ -331,6 +338,7 @@ function Shell() {
           lands it simply stays: same key, same parent, so React keeps it instead of mounting
           the route again. */}
       <div id="app">
+        <BackgroundTexture />
         <Page key={loc.pathname} loc={loc} render={view} motion={pageMotion(pathRef.current, loc.pathname, navType)} />
         {showPreview && <Page key={preview} loc={previewLoc(preview)} render={view} under scrollY={scrollPositions.get(preview) || 0} />}
       </div>
@@ -342,6 +350,7 @@ function Shell() {
       <RestTimer />
       <Modals />
       <Toast />
+      {authed && !needsPlanOnboarding && <GameRewards />}
       <TimerFlash />
       {/* Seasonal decoration (lib/seasonal.js): nothing, and nothing loaded, out of season. Never
           over a running workout or the first-launch screens. */}

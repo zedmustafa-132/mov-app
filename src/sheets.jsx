@@ -11,6 +11,7 @@ import { toScale, rirOf, EFFORT_PRESETS, effortColor } from './lib/effort.js'
 import { beep, vibrate } from './lib/sound.js'
 import { t, tn, dateLocale, instrFor, instrTranslated, descFor, exerciseNameFor, exerciseNameClass, getLang, useLang } from './lib/i18n.js'
 import { nav, closeThenNav, navToWorkout } from './lib/nav.js'
+import { isEasyStartRoutine } from './lib/first-workout.js'
 import { buildStarterPlan, starterPlanDays, starterPlanOptions } from './lib/starter.js'
 import Media, { Thumb } from './components/Media.jsx'
 import CustomMediaField from './components/CustomMediaField.jsx'
@@ -76,6 +77,8 @@ import { workoutCardModel, layoutWorkoutCard, drawWorkoutCard, viewAspect, CARD_
 import { copyText } from './lib/clipboard.js'
 import { queueRemaining, pinState } from './lib/queue.js'
 import { DAY_NOTE_TAGS, DAY_NOTE_LABEL, DAY_NOTE_ICON, dayNoteOf, dayNoteLine, canNoteDay, withDayNote } from './lib/day-notes.js'
+import { pickerSuggestions, recentPickerIds } from './lib/exercise-picker-discovery.js'
+import './exercise-picker.css'
 
 const S = () => useStore.getState().S
 const update = (...a) => useStore.getState().update(...a)
@@ -214,9 +217,16 @@ function StarterPlanChooser({ close }) {
   const week = useStore(s => s.S.week)
   const routines = useStore(s => s.S.routines)
   const profiles = useStore(s => s.S.equipProfiles) || []
-  // Fitting starts on for the profile you already filter by; '' leaves the plan as written.
-  const [fitId, setFitId] = useState(() => activeProfile(useStore.getState().S)?.id || '')
-  const fit = profiles.find(p => p.id === fitId) || null
+  const quickFits = [
+    { id: 'quick:bodyweight', name: t('Bodyweight'), equipment: [], accV: ACC_V },
+    { id: 'quick:dumbbells', name: t('Dumbbells'), equipment: ['dumbbell'], accV: ACC_V }
+  ]
+  const [fitId, setFitId] = useState(() => {
+    const state = useStore.getState().S
+    const equipment = state.targetHistory?.at(-1)?.inputs?.equipment
+    return activeProfile(state)?.id || (['bodyweight', 'dumbbells'].includes(equipment) ? 'quick:' + equipment : '')
+  })
+  const fit = [...profiles, ...quickFits].find(p => p.id === fitId) || null
   const choose = (id, name) => {
     const days = starterPlanDays(id)
     close()
@@ -233,19 +243,17 @@ function StarterPlanChooser({ close }) {
   }
   return <>
     <h3>{t('Choose starter plan')}</h3>
-    {profiles.length > 0
-      ? <div className="chips" style={{ margin: '0 0 10px' }}>
-          <div className="small dim" style={{ width: '100%' }}>{t('Fit to my equipment')}</div>
-          <button className={'chip nocap' + (!fit ? ' on' : '')} onClick={() => setFitId('')}>{t('As written')}</button>
-          {profiles.map(p => <button key={p.id} className={'chip nocap' + (fit?.id === p.id ? ' on' : '')} onClick={() => setFitId(p.id)}>{p.name}</button>)}
-        </div>
-      : <div className="small dim" style={{ margin: '0 0 10px' }}>{t('Add an equipment profile in Settings to fit a plan to what you own.')}</div>}
+    <div className="chips" style={{ margin: '0 0 18px' }}>
+      <div className="small dim" style={{ width: '100%', marginBottom: 4 }}>{t('What equipment will you use?')}</div>
+      <button className={'chip nocap' + (!fit ? ' on' : '')} aria-pressed={!fit} onClick={() => setFitId('')}>{t('Full gym')}</button>
+      {[...quickFits, ...profiles].map(p => <button key={p.id} className={'chip nocap' + (fit?.id === p.id ? ' on' : '')} aria-pressed={fit?.id === p.id} onClick={() => setFitId(p.id)}>{p.name}</button>)}
+    </div>
     <div className="list">
       {starterPlanOptions().map(({ id, days }) => {
         const { name, about } = PLAN_COPY[id]()
         return <div key={id} className="item" {...tappable(() => choose(id, name))}>
           <span className="lrow-i" style={{ background: 'var(--surface-3)' }}><Icon name="clipboard" /></span>
-          <div className="grow"><div className="tt">{name}</div><div className="ss">{t('{0} days per week', days)} · {about}</div></div>
+          <div className="grow"><div className="tt">{name}</div><div className="ss">{t('{0} days per week', days)} · {id === '5x5' && fit ? t('Five sets of five, adapted to your equipment.') : about}</div></div>
           <Icon name="chevronRight" className="chev" />
         </div>
       })}
@@ -1461,7 +1469,8 @@ function usageMap(st) {
 }
 // The swap pickers' own scope (#473): exercises sharing the swapped exercise's target muscle.
 const SAME = '≈'
-function ExercisePicker({ onPick, title, close, like, actionIcon, backups }) {
+const RECENT = '↶'
+function ExercisePicker({ onPick, title, close, like, actionIcon, backups, single = false }) {
   const st = useStore(s => s.S)
   const isSwap = !!like || title === t('Swap exercise') || title === t('Replace exercise') || title === 'Swap exercise' || title === 'Replace exercise'
   const quickIcon = actionIcon || (isSwap ? 'swap' : 'plus')
@@ -1486,15 +1495,29 @@ function ExercisePicker({ onPick, title, close, like, actionIcon, backups }) {
   const [showAll, setShowAll] = useState(false)
   const [shown, setShown] = useState(50)
   const [byMuscle, setByMuscle] = useState(false)
+  const [catalogueOpen, setCatalogueOpen] = useState(false)
+  const [added, setAdded] = useState({})
+  // Keep the suggestion order steady while quick-add updates the workout beneath the sheet.
+  const [discoverySeed] = useState(() => st)
+  const recentIds = recentPickerIds(st)
+  const recentSet = new Set(recentIds)
+  const addedCount = Object.values(added).reduce((sum, count) => sum + count, 0)
+  const pick = (ex, quick) => {
+    if (single) { close(); onPick(ex, true); return }
+    if (quick) onPick(ex, true)
+    else onPick(ex)
+    if (quick && !isSwap) setAdded(current => ({ ...current, [ex.id]: (current[ex.id] || 0) + 1 }))
+  }
   const searchRef = useRef(null)
   const bpStrip = useRef(null), eqStrip = useRef(null), catStrip = useRef(null)
   const onSearchFocus = useSheetKeyboard(searchRef)
   const moreRef = useAutoMore(() => setShown(s => s + 50))
   const all = allExercises(st)
   const profile = activeProfile(st)
-  const inScope = e => bp === '★' ? usage[e.id] : bp === '☆' ? isFav(st, e.id) : (!bp || e.bp === bp)
+  const inScope = e => bp === '★' ? usage[e.id] : bp === '☆' ? isFav(st, e.id) : bp === RECENT ? recentSet.has(e.id) : (!bp || e.bp === bp)
   let inPart = searchExercises(bp === SAME ? sameMuscleFirst(all, likeEx) : all.filter(inScope), q)
   if (bp === '★') inPart = [...inPart].sort((a, b) => (usage[b.id] - usage[a.id]) || exerciseNameFor(a).localeCompare(exerciseNameFor(b)))
+  if (bp === RECENT) inPart = [...inPart].sort((a, b) => recentIds.indexOf(a.id) - recentIds.indexOf(b.id))
   // The Library's Type row (issue #521), with its fallback: a type the search or muscle group
   // narrowed away is ignored for this view, not forgotten.
   const { opts: catOpts, on: catOn, list: base } = byCategory(inPart, cat)
@@ -1511,9 +1534,14 @@ function ExercisePicker({ onPick, title, close, like, actionIcon, backups }) {
   const f = bp === SAME ? sameMuscleFirst(ranked, likeEx) : ranked
   const chosenCount = Object.keys(usage).length
   const favCount = (st.favEx || []).length
-  const special = bp === '★' || bp === '☆'
+  const special = bp === '★' || bp === '☆' || bp === RECENT
   // The Library's live result count (GitLab !31), for the same reason: how many are left.
   const narrowed = !!(q.trim() || bp || eqOn || catOn)
+  const discovery = !isSwap && !narrowed && !catalogueOpen
+  const suggestions = discovery ? pickerSuggestions(discoverySeed, eqFiltered) : []
+  const chooseScope = scope => {
+    setQ(''); setEq(''); setCat(''); setBp(scope === 'all' ? '' : scope); setShown(50); setCatalogueOpen(scope === 'all')
+  }
   useRevealActiveChip(bpStrip, bp)
   useRevealActiveChip(eqStrip, eqOn)
   useRevealActiveChip(catStrip, catOn)
@@ -1524,37 +1552,45 @@ function ExercisePicker({ onPick, title, close, like, actionIcon, backups }) {
   const similar = q.trim() && qLate === q && !special && f.length <= shown
     ? similarExercises((profile && !showAll ? all.filter(e => exAvailable(st, e)) : all).filter(e => bp === SAME || !bp || e.bp === bp), q, f, f.length ? 12 : 30)
     : []
-  const pickRow = e => <div key={e.id} className="item" {...tappable(() => onPick(e))}>
-        <Thumb ex={e} /><div className="grow"><div className={`tt ${exerciseNameClass(e)}`}>{isFav(st, e.id) && <Icon name="starFill" className="fav-star" />}{exerciseNameFor(e)}</div><div className="ss capitalize">{t(MUSCLE_NAME[e.tg] || e.tg || e.bp)} · {t(e.eq)}</div></div>
+  const pickRow = (e, suggestion = false) => <div key={e.id} className={`${suggestion ? 'picker-choice' : 'item picker-result'}${added[e.id] ? ' was-added' : ''}`}>
+        <Thumb ex={e} /><button className="picker-detail-button grow" onClick={() => pick(e)} aria-label={single ? t('Log {0}', exerciseNameText(e)) : t('Exercise details: {0}', exerciseNameText(e))}><span className={`${suggestion ? 'picker-choice-title' : 'tt'} ${exerciseNameClass(e)}`}>{isFav(st, e.id) && <Icon name="starFill" className="fav-star" />}{exerciseNameFor(e)}</span><span className="ss capitalize">{t(MUSCLE_NAME[e.tg] || e.tg || e.bp)} · {t(e.eq)}</span><span className="picker-detail-hint">{single ? t('Start logging') : t('Details & setup')}<Icon name="chevronRight" /></span></button>
         {/* Accent tag = already in a routine/log ("Chosen"); the yellow star by the name = favourite. */}
         {usage[e.id] && <span className="tag acc"><Icon name="starFill" /></span>}
         {/* A "+" or "swap" glyph reads as "commit this now" — it used to just open the same detail sheet as
             tapping the row, so it added nothing until you'd scrolled past the sets/reps config
             and found the real button. Now it does what it looks like: commits with the default
             config right away. In a swap or replace flow (#561), the opposed-arrows glyph makes it clear
-            this replaces the chosen exercise rather than adding a new one. Tapping the row itself still
-            opens the detail/config sheet, for when you want to set sets/reps before committing. */}
-        <button className="iconbtn chev" aria-label={quickLabel(e)} style={{ padding: 8, margin: -8 }}
-          onClick={ev => { ev.stopPropagation(); onPick(e, true) }}><Icon name={quickIcon} /></button>
+            this replaces the chosen exercise rather than adding a new one. The separate name/details
+            button opens setup, and both actions remain native keyboard-accessible sibling controls. */}
+        <button className="picker-add-button iconbtn chev" aria-label={quickLabel(e)}
+          onClick={ev => { ev.stopPropagation(); pick(e, true) }}><Icon name={added[e.id] && !isSwap ? 'check' : quickIcon} className={added[e.id] ? 'added-check' : ''} />{isSwap ? t('Use') : added[e.id] ? t('Add again') : t('Add')}</button>
       </div>
-  if (byMuscle) return <>
-    <div className="row between" style={{ marginBottom: 10 }}><h3>{title || t('Add exercise')}</h3>
-      <Button size="sm" variant="ghost" onClick={() => setByMuscle(false)}>{t('All')}</Button>
+  if (byMuscle) return <div className="exercise-picker">
+    <div className="picker-heading"><div><h3>{title || t('Add exercise')}</h3><p>{t('Choose a muscle, then add an exercise.')}</p></div>
+      <button className="iconbtn" aria-label={t('Close exercise picker')} onClick={close}><Icon name="xmark" /></button>
     </div>
-    <MuscleExplorer onPick={onPick} pickIcon={quickIcon} />
-  </>
+    <Button size="sm" variant="secondary" icon="chevronLeft" onClick={() => setByMuscle(false)}>{t('Back to exercises')}</Button>
+    <MuscleExplorer onPick={pick} pickIcon={quickIcon} />
+    <Button variant="primary" onClick={close}>{t('Done')}</Button>
+  </div>
 
-  return <>
-    <div className="row between" style={{ marginBottom: 10 }}><h3>{title || t('Add exercise')}</h3>
-      <Button size="sm" variant="tinted" icon="figureStrength" onClick={() => setByMuscle(true)}>{t('By muscle')}</Button>
+  return <div className="exercise-picker">
+    <div className="picker-heading"><div><h3>{title || t('Add exercise')}</h3><p>{single ? t('Choose one exercise. We’ll open it ready to log.') : isSwap ? t('Choose a replacement. Your other exercises stay as they are.') : t('Tap Add to use an exercise. Tap its name for details.')}</p></div>
+      <button className="iconbtn" aria-label={t('Close exercise picker')} onClick={close}><Icon name="xmark" /></button>
     </div>
     {/* .picker-search is what index.css keys the keyboard-aware sheet layout on: the sheet
         lifts above the keys and the search stays put while the list scrolls under it. */}
     <div className="picker-search"><div className="search-row"><div className={'search' + (narrowed ? ' has-count' : '') + (q ? ' has-clear' : '')}><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
-      <input ref={searchRef} className="input" placeholder={t('Search {0} exercises…', all.length)} value={q} onFocus={onSearchFocus} onChange={e => { setQ(e.target.value); setShown(50) }} />
+      <input ref={searchRef} className="input" aria-label={t('Search exercises')} placeholder={t('Search exercises, e.g. squat')} value={q} onFocus={onSearchFocus} onChange={e => { setQ(e.target.value); setShown(50) }} />
       {narrowed && <span className="search-count" role="status" aria-label={exCount(f.length)}>{fmtNum(f.length)}</span>}
       {q && <button className="clear" onClick={() => { setQ(''); setShown(50) }} aria-label={t('Clear')}><Icon name="xmark" /></button>}</div>
-      <ExerciseViewToggle /></div></div>
+      <ExerciseViewToggle />{!single && <Button className="picker-done" size="sm" variant="primary" onClick={close}>{t('Done')}</Button>}</div>{!single && <div className={'picker-added-summary' + (addedCount ? ' has-added' : '')} role="status">{addedCount ? <><Icon name="check" />{tn('{0} exercise added', '{0} exercises added', addedCount)}</> : isSwap ? t('Use replaces the selected exercise.') : t('Add several exercises, then tap Done.')}</div>}</div>
+    {!isSwap && <div className="picker-quick-tabs" aria-label={t('Browse exercises')}>
+      <button aria-pressed={discovery} onClick={() => chooseScope('')}>{t('Suggested')}</button>
+      <button aria-pressed={!discovery && !special} onClick={() => chooseScope('all')}>{t('All exercises')}</button>
+      {recentIds.length > 0 && <button aria-pressed={bp === RECENT} onClick={() => chooseScope(RECENT)}><Icon name="history" />{t('Recent')}</button>}
+      {favCount > 0 && <button aria-pressed={bp === '☆'} onClick={() => chooseScope('☆')}><Icon name="star" />{t('Favourites')}</button>}
+    </div>}
     {profile && <div className="small dim row" style={{ margin: '8px 0 2px', gap: 6, alignItems: 'center' }}>
       <Icon name="kettlebell" style={{ fontSize: 13 }} />
       {showAll ? t('Showing all equipment') : t('Showing what you have in "{0}"', profile.name)}
@@ -1566,6 +1602,7 @@ function ExercisePicker({ onPick, title, close, like, actionIcon, backups }) {
         group the filter stays applied, and if not the eqOn fallback above drops it for this view
         without forgetting the choice (issue #71). The favourites/chosen chips still clear it —
         those are cross-body-part views where a stale equipment filter would be confusing. */}
+    <div className="picker-filter-tools"><details className="simple-filters"><summary>{t("Filters")}<Icon name="slider" /></summary>
     <div className="chips" ref={bpStrip} style={{ margin: eqOpts.length > 1 || catOpts.length > 1 ? '10px 0 6px' : '10px 0' }}>
       {likeTg && <button className={'chip nocap' + (bp === SAME ? ' on' : '')} onClick={() => { setBp(SAME); setShown(50) }}><Icon name="figureStrength" style={{ fontSize: 12, display: 'inline-block', marginInlineEnd: 4, verticalAlign: '-1px' }} />{t('Same muscle: {0}', t(MUSCLE_NAME[likeTg] || likeTg))}</button>}
       {favCount > 0 && <button className={'chip' + (bp === '☆' ? ' on' : '')} onClick={() => { setBp('☆'); setEq(''); setShown(50) }}><Icon name="starFill" className="fav-star" />{t('Favourites')} ({favCount})</button>}
@@ -1581,31 +1618,48 @@ function ExercisePicker({ onPick, title, close, like, actionIcon, backups }) {
       <button className={'chip nocap' + (!eqOn ? ' on' : '')} onClick={() => { setEq(''); setShown(50) }}>{t('Any equipment')}</button>
       {eqOpts.map(x => <button key={x} className={'chip' + (eqOn === x ? ' on' : '')} onClick={() => { setEq(x); setShown(50) }}>{t(x)}</button>)}
     </div>}
+    <Button className="picker-custom-action" size="sm" variant="ghost" icon="plusCircle" onClick={() => customExSheet(null, ex => onPick(ex), q.trim())}>{t('Create your own exercise')}</Button>
+    </details><Button className="picker-muscles" size="sm" variant="secondary" icon="figureStrength" onClick={() => setByMuscle(true)}>{t('By muscle')}</Button></div>
+    {discovery && <><h4 className="picker-suggestions-title">{st.favEx?.length || recentIds.length ? t('Your go-to exercises') : t('Start with familiar movements')}</h4><div className="picker-suggestions">{suggestions.map(e => pickRow(e, true))}</div></>}
+    <details className="picker-catalogue" open={!discovery} onToggle={e => { if (e.currentTarget.open && discovery) setCatalogueOpen(true) }}>
+    <summary>{t('Browse all {0} exercises', fmtNum(f.length))}<Icon name="chevronRight" /></summary>
     <div className={'list' + (st.exerciseView === 'cards' ? ' ex-grid' : '')}>
-      {!special && <div className="item ex-new" {...tappable(() => customExSheet(null, ex => onPick(ex), q.trim()))}>
+      {!special && f.length === 0 && similar.length === 0 && <div className="item ex-new" {...tappable(() => customExSheet(null, ex => single ? pick(ex, true) : onPick(ex), q.trim()))}>
         <div className="thumb thumb-x"><Icon name="plusCircle" /></div>
         <div className="grow"><div className="tt">{t('Create your own exercise')}</div><div className="ss">{t('name + body part, and a photo or video if you like')}</div></div><Icon name="plus" className="chev" />
       </div>}
       {/* The slot's planned substitutes, first, while nothing is typed: the plan already knows. */}
       {backupList.length > 0 && !q.trim() && <>
         <h4 className="sec">{t('Your backups')}</h4>
-        {backupList.map(pickRow)}
+        {backupList.map(e => pickRow(e))}
         <h4 className="sec">{t('Everything else')}</h4>
       </>}
-      {f.slice(0, shown).map(pickRow)}
+      {f.slice(0, shown).map(e => pickRow(e))}
       {f.length === 0 && bp === '★' && <div className="empty">{t('Nothing picked yet. Add some exercises and they’ll show up here.')}</div>}
       {f.length === 0 && bp === '☆' && <div className="empty">{t('No favourites yet. Tap the star on an exercise to add one.')}</div>}
+      {f.length === 0 && !special && similar.length === 0 && <div className="empty picker-no-results"><Icon name="magnifier" /><p>{t('No exercises found. Try another name or clear your filters.')}</p><Button size="sm" variant="secondary" onClick={() => chooseScope('all')}>{t('Clear search & filters')}</Button></div>}
       {similar.length > 0 && <h4 className="sec similar-label">{f.length ? t('Similar exercises') : t('No exact match. These come close:')}</h4>}
-      {similar.map(pickRow)}
+      {similar.map(e => pickRow(e))}
+      {f.length === 0 && bp === RECENT && <div className="empty">{t('No recently used exercises match these filters.')}</div>}
     </div>
     {f.length > shown && <><div style={{ height: 8 }} /><Button ref={moreRef} onClick={() => setShown(s => s + 50)}>{t('Show more')}</Button></>}
-  </>
+    </details>
+  </div>
 }
 // `title` names what the pick is for when it is not an add — the routine editor's Replace (#110).
 // `like` is the exercise a swap or a replace is away from: the picker then opens on the ones that
 // train the same muscle, same equipment first (#473).
 // `backups`: the slot's planned substitutes (lib/routine-backups.js), listed first in a swap.
-export const exercisePicker = (onPick, { title, like, actionIcon, backups } = {}) => ui().openSheet(close => <ExercisePicker onPick={onPick} title={title} like={like} actionIcon={actionIcon} backups={backups} close={close} />)
+export const exercisePicker = (onPick, { title, like, actionIcon, backups, single = false } = {}) => ui().openSheet(close => <ExercisePicker onPick={onPick} title={title} like={like} actionIcon={actionIcon} backups={backups} single={single} close={close} />)
+
+export function quickExerciseSheet() {
+  if (S().active) { navToWorkout(); toast(t('Resume your current workout before starting another.')); return }
+  return exercisePicker(ex => {
+    // A picker can remain open in another tab while a workout starts. Never replace it.
+    if (S().active) { navToWorkout(); return }
+    beginWorkout([], null, { exercise: ex })
+  }, { title: t('Log an exercise'), single: true })
+}
 
 /** Start a safe swap for one exact active-workout occurrence. */
 export function swapActiveWorkoutExercise(index) {
@@ -3110,6 +3164,7 @@ export function DayNoteRow({ iso, note }) {
 // `routineIds` accepts `string | string[] | null` — `[r.id]` for one routine,
 // `effectiveRoutineIds(...)` for today's planned session, `[]` / null for explicit freestyle.
 export function startFlow(routineIds) {
+  if (S().active) { navToWorkout(); toast(t('Resume your current workout before starting another.')); return }
   // The weigh-in is a setting (Settings → During a workout, issue #137): off goes straight
   // into the session with no body weight on it, same as "Start without weighing in".
   if (S().weighIn === false) { beginWorkout(routineIds, null); return }
@@ -3117,9 +3172,12 @@ export function startFlow(routineIds) {
 }
 // `opts` from the Apple Watch (lib/watch-sync.js): a session started there keeps the watch's id,
 // so the sets ticked on it find it, and its start time, however late the phone hears of it.
-export function beginWorkout(routineIds, bw, { id = null, start = null } = {}) {
+export function beginWorkout(routineIds, bw, { id = null, start = null, exercise = null } = {}) {
   const st = S()
-  const { entries, routineIds: rids, routines } = buildCombinedEntries(st, routineIds)
+  const combined = buildCombinedEntries(st, routineIds)
+  const { routineIds: rids, routines } = combined
+  const entries = exercise ? [{ id: exercise.id, ...buildSessionEntry(st, exercise.id, pickedExerciseConfig(exercise.id)) }] : combined.entries
+  const guided = !!exercise || (routines.length === 1 && isEasyStartRoutine(routines[0]))
   const startAt = Number.isFinite(start) && start > 0 ? start : Date.now()
   update(s => {
     s.active = {
@@ -3127,11 +3185,12 @@ export function beginWorkout(routineIds, bw, { id = null, start = null } = {}) {
       // A session tracks its routines as a list; per-entry `rid` carries which one each
       // exercise came from. No top-level `excludeFromProgression` — per-entry `noProg` does it.
       routineIds: rids,
-      name: routines.length ? deriveSessionName(routines.map(r => r.name)) : t('Freestyle'),
+      name: exercise ? t('Quick workout') : routines.length ? deriveSessionName(routines.map(r => r.name)) : t('Freestyle'),
       bw: bw || null, cur: 0, entries,
       // Snapshot the layout at start so the header ⋮ can change it for this session only —
       // changing the saved default (Settings → Workout view) mid-session leaves it alone.
-      workoutView: st.workoutView || 'cards',
+      workoutView: guided ? 'focus' : st.workoutView || 'cards',
+      ...(guided ? { guided: true } : {}),
     }
   })
   useUI.getState().stopRest()
@@ -3519,17 +3578,17 @@ export const supersetSheet = (meta, onSave) => ui().openSheet(close => <Superset
    by tapping "+ Drop"/"+ Burst", which appends with the same suggested-next-value math. */
 
 // Shown when the last exercise's last set is checked — finish, or keep going.
-function WorkoutComplete({ close }) {
+function WorkoutComplete({ close, onAddExercise }) {
   return <div style={{ textAlign: 'center', padding: '8px 0' }}>
     <div style={{ fontSize: 44, display: 'flex', justifyContent: 'center', color: 'var(--acc)' }}><Icon name="checkCircle" /></div>
     <h3 style={{ margin: '8px 0' }}>{t("That's the whole workout!")}</h3>
     <div className="muted small" style={{ marginBottom: 16 }}>{t('All exercises done. Nice work! Finish up, or add another one if you’ve got more in you.')}</div>
     <Button variant="primary" icon="flag" onClick={() => { close(); finishWorkout() }}>{t('Finish workout')}</Button>
     <div style={{ height: 8 }} />
-    <Button onClick={() => { close(); useUI.getState().toast(t('Keep going: tap “+ Add exercise” below')) }}>{t('Continue workout')}</Button>
+    <Button icon={onAddExercise ? 'plus' : undefined} onClick={() => { close(); if (onAddExercise) onAddExercise(); else useUI.getState().toast(t('Keep going: tap “+ Add exercise” below')) }}>{onAddExercise ? t('Add another exercise') : t('Continue workout')}</Button>
   </div>
 }
-export const workoutCompleteSheet = () => ui().openSheet(close => <WorkoutComplete close={close} />, { kind: 'center' })
+export const workoutCompleteSheet = ({ onAddExercise } = {}) => ui().openSheet(close => <WorkoutComplete close={close} onAddExercise={onAddExercise} />, { kind: 'center' })
 
 export function saveWorkoutEdits(onExit = () => nav('/history')) {
   // A save decision left open after the editor already closed (a second prompt from a route
@@ -3674,14 +3733,25 @@ function KeepInRoutine({ additions }) {
 
 function FinishSummary({ w, prs, e1prs = [], additions = [], close }) {
   const st = useStore(s => s.S)
-  return <div style={{ textAlign: 'center', padding: '8px 0' }}>
+  const [savedRoutineId, setSavedRoutineId] = useState(null)
+  const volume = sessionVolume(w, st)
+  const saveRoutine = () => {
+    if (savedRoutineId) { closeThenNav(close, '/plan/r/' + savedRoutineId); return }
+    let id
+    try { update(s => { id = saveSessionAsRoutine(s, w, w.name) }) }
+    catch (error) { toast(t(error.message)); return }
+    setSavedRoutineId(id)
+    toast(t('Routine saved. You can use it for your next workout.'))
+  }
+  return <div className="workout-finish-summary" style={{ textAlign: 'center', padding: '8px 0' }}>
     {/* Sticky, so the summary can be left from the top however far it has been scrolled. */}
     <div className="fin-x"><button type="button" className="iconbtn" aria-label={t('Close')} onClick={() => closeThenNav(close, '/home')}><Icon name="xmark" /></button></div>
     <div style={{ fontSize: 44, display: 'flex', justifyContent: 'center', color: 'var(--acc)', position: 'relative' }}><Icon name="trophy" /><SeasonDeco spot="finish" workout /></div>
     <h3 style={{ margin: '8px 0' }}>{t('Workout complete!')}</h3>
+    <p className="small muted">{t('Your workout has been saved.')}</p>
     <div className="tiles fin" style={{ textAlign: 'start' }}>
       <div className="tile"><div className="l">{t('Duration')}</div><div className="v" style={{ fontSize: '1.1rem' }}>{fmtDur(w.end - w.start)}</div></div>
-      <div className="tile"><div className="l">{t('Volume')}</div><div className="v" style={{ fontSize: '1.1rem' }}>{fmtVol(sessionVolume(w, st), st.unit)}</div></div>
+      <div className="tile"><div className="l">{volume > 0 ? t('Volume') : t('Exercises')}</div><div className="v" style={{ fontSize: '1.1rem' }}>{volume > 0 ? fmtVol(volume, st.unit) : w.entries.length}</div></div>
       <div className="tile wide"><div className="l">{t('Sets')}</div><div className="v" style={{ fontSize: '1.1rem' }}>{setsWorkCount(setsDone(w), workSetsDone(w))}</div></div>
       <div className="tile narrow"><div className="l">{t('PRs')}</div><div className="v" style={{ fontSize: '1.1rem' }}>{prs.length || '–'}</div></div>
     </div>
@@ -3689,16 +3759,19 @@ function FinishSummary({ w, prs, e1prs = [], additions = [], close }) {
       {prs.map(id => <div key={id} className="small accent row" style={{ gap: 6, alignItems: 'flex-start' }}><Icon name="trophy" style={{ fontSize: 13, marginTop: 2, flex: 'none' }} /><span>{t('New PR:')} <span className={exerciseNameClass(EXIDX[id])}>{EXIDX[id] ? exerciseNameFor(EXIDX[id]) : id}</span></span></div>)}
       {e1prs.map(p => <div key={p.id} className="small accent row" style={{ gap: 6, alignItems: 'flex-start' }}><Icon name="chartLine" style={{ fontSize: 13, marginTop: 2, flex: 'none' }} /><span>{t('Best estimated 1RM:')} <span className={exerciseNameClass(EXIDX[p.id])}>{EXIDX[p.id] ? exerciseNameFor(EXIDX[p.id]) : p.id}</span> · {fmtNum(p.est)} {st.unit}</span></div>)}
     </div>}
+    <KeepInRoutine additions={additions} />
+    <Button variant="primary" trailingIcon="arrowRight" onClick={() => closeThenNav(close, '/home')}>{t('Back to Today')}</Button>
+    {!(w.routineIds?.length) && w.entries.length > 0 && <Button className="finish-save-routine" variant="secondary" icon={savedRoutineId ? 'check' : 'clipboard'} onClick={saveRoutine}>{savedRoutineId ? t('Edit saved routine') : t('Save this workout as a routine')}</Button>}
+    <details className="finish-workout-details"><summary>{t('Workout details & photos')}<Icon name="chevronDown" /></summary>
     <h4 className="sec" style={{ textAlign: 'start' }}>{t('What you just trained')}</h4>
     <BodyMap load={loadOfWorkouts([w])} body={st.body} />
     <div style={{ height: 14 }} />
     <LastAndNext st={st} w={w} />
     <CardioDone st={st} w={w} />
-    <KeepInRoutine additions={additions} />
     {/* The moment for a progress photo or the clip of a set: the workout is already saved, so
         what is added here goes straight onto its record. */}
     <div style={{ textAlign: 'start' }}><WorkoutMediaSection w={w} hint /></div>
-    <Button variant="primary" onClick={() => closeThenNav(close, '/home')}>{t('Nice!')}</Button>
+    </details>
   </div>
 }
 export function finishWorkout() {

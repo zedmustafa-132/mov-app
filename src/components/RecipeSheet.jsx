@@ -202,7 +202,7 @@ export function RecipeSheet({ date, meal = 'lunch', close }) {
           </div>
         )}
 
-        <Button variant="primary" icon="check" onClick={handleSaveRecipe}>
+        <Button variant="primary" icon="check" onClick={handleSaveRecipe} disabled={!name.trim() || !ingredients.length}>
           {t('Save Recipe')}
         </Button>
       </div>

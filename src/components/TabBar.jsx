@@ -1,9 +1,12 @@
+import { useUI } from '../store/useUI.js'
+import { HomeMenu } from '../views/Home.jsx'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { effectiveRoutineIds, effectiveRoutines } from '../lib/history.js'
 import { todayISO } from '../lib/format.js'
 import { t } from '../lib/i18n.js'
 import Icon from './Icon.jsx'
+import { Brand } from './Brand.jsx'
 import Elapsed from './Elapsed.jsx'
 import { useConnectionTrouble } from './SyncBanner.jsx'
 
@@ -13,7 +16,7 @@ import { useConnectionTrouble } from './SyncBanner.jsx'
 // state it took with it is the DOM node itself: focus, the :active tint, any in-flight transition.
 function Tab({ active, icon, label, onClick, dot }) {
   return (
-    <button className={active ? 'on' : ''} onClick={onClick} aria-label={dot ? label + ', ' + t('Connection problem') : undefined}>
+    <button className={active ? 'on' : ''} onClick={onClick} aria-current={active ? 'page' : undefined} aria-label={dot ? label + ', ' + t('Connection problem') : undefined}>
       <span className="tab-ic"><Icon name={icon} />{dot && <span className="tab-dot" aria-hidden="true" />}</span><span>{label}</span>
     </button>
   )
@@ -51,24 +54,12 @@ export default function TabBar({ onStart }) {
   }
 
   return (
-    <nav id="tabbar">
-      <Tab active={on('home')} icon="house" label={t('Home')} dot={trouble} onClick={() => switchTab('/home')} />
-      <Tab active={on('food')} icon="utensils" label={t('Food')} onClick={() => switchTab('/food')} />
-      {/* On the workout screen itself there is nothing to resume, so the button reads as the
-          tab it is and stays lit (#29); anywhere else it brings you back to the exercise you
-          were on — the marker is kept in S.active.cur and never moves on its own (#21). The
-          glyph is always play: start and resume are one concept, and an exercise is a dumbbell.
-          A live session you stepped away from shows its running time instead of a word, the
-          button still named Resume; a past workout being edited or logged after the fact has no
-          clock to run. */}
-      <button className={'start' + (S.active ? ' rec' : '') + (S.active && cur === 'workout' ? ' on' : '')} onClick={startWorkout}
-        aria-label={running ? t('Resume') : undefined}>
-        <span className="cir"><Icon name="play" /></span>
-        {running ? <span className="tab-time"><Elapsed start={S.active.start} /></span>
-          : <span>{S.active ? (cur === 'workout' ? t('Workout') : S.active.editingWorkoutId ? t('Edit workout') : t('Resume')) : t('Start')}</span>}
-      </button>
-      <Tab active={on('plan')} icon="calendar" label={t('Plan')} onClick={() => switchTab('/plan')} />
-      <Tab active={on('stats')} icon="chart" label={t('Stats')} onClick={() => switchTab('/stats')} />
+    <nav id="tabbar" className="simple-nav" aria-label={t('Main navigation')}>
+      <div className="desktop-brand"><Brand /></div>
+      <Tab active={cur === 'home' || cur === 'food' || cur === 'overview'} icon="gameHome" label={t('Today')} dot={trouble} onClick={() => switchTab('/home')} />
+      <Tab active={cur === 'workout' || cur === 'plan' || cur === 'library' || cur === 'muscles'} icon="questTraining" label={running ? t('Resume') : t('Train')} onClick={() => nav('/workout')} />
+      <Tab active={on('stats')} icon="gameProgress" label={t('Progress')} onClick={() => switchTab('/stats')} />
+      <Tab active={cur === 'settings'} icon="gameMenu" label={t('More')} onClick={() => useUI.getState().openSheet(close => <HomeMenu close={close} />)} />
     </nav>
   )
 }

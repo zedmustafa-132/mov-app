@@ -13,10 +13,15 @@ import {
   evaluateBadges
 } from './index.js'
 
+const EMPTY_OBJ = Object.freeze({})
+const EMPTY_ARR = Object.freeze([])
+
 export function useGamification() {
   const S = useStore(s => s.S)
-  const nutritionDays = useNutrition(s => s.days || {})
-  const recipes = useNutrition(s => s.recipes || [])
+  const rawDays = useNutrition(s => s.days)
+  const nutritionDays = rawDays || EMPTY_OBJ
+  const rawRecipes = useNutrition(s => s.recipes)
+  const recipes = rawRecipes || EMPTY_ARR
 
   const todayStr = todayISO()
   const todayNutrition = nutritionDays[todayStr] || { entries: [], waterMl: 0 }

@@ -7,7 +7,7 @@
 // instead of its name (EmailRow). Passkeys stay the default wherever this appears; the rules
 // themselves are the server's (api/password.js and the password block in api/server.js), this
 // only words them.
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useStore, hasData } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { t } from '../lib/i18n.js'
@@ -15,6 +15,9 @@ import { dateLocale } from '../lib/i18n-core.js'
 import { api, webauthnOK, passkeyAssertion, passwordLogin, passwordRegister, passwordResetRedeem } from '../lib/api.js'
 import { askAddDeviceData } from '../sheets.jsx'
 import { Row, Button } from './ui.jsx'
+import Icon from './Icon.jsx'
+import { BrandMark } from './Brand.jsx'
+import { MeasurementUnitChoice, rememberWeightUnit } from './UnitChoice.jsx'
 
 // The server's floor (api/password.js MIN_LENGTH), checked here first so the common mistake is
 // answered without a round trip. The server still decides.
@@ -82,6 +85,38 @@ async function signedIn(u, close) {
 const field = { autoCapitalize: 'none', autoCorrect: 'off', spellCheck: false }
 const codeStyle = { letterSpacing: '.14em', fontWeight: 600, textAlign: 'center' }
 
+export function AuthHeader({ eyebrow, title, description, close }) {
+  return <header className="auth-header">
+    {close
+      ? <button type="button" className="auth-close" aria-label={t('Close')} onClick={close}><Icon name="xmark" /></button>
+      : <span className="auth-brand-icon"><BrandMark /></span>}
+    <p className="auth-eyebrow">{eyebrow}</p>
+    <h3>{title}</h3>
+    {description && <p className="auth-description">{description}</p>}
+  </header>
+}
+
+// Persistent labels still identify a field after autofill. Password visibility is local to
+// each field and never changes the value or its password-manager autocomplete metadata.
+export function AuthInput({ label, icon, hint, inputRef, type = 'text', ...props }) {
+  const id = useId()
+  const [visible, setVisible] = useState(false)
+  const password = type === 'password'
+  return <div className="auth-field">
+    <label htmlFor={id}>{label}</label>
+    <div className={'auth-input-wrap' + (password ? ' has-reveal' : '')}>
+      <Icon name={icon || (password ? 'lock' : 'person')} />
+      <input {...props} ref={inputRef} className="input" id={id} type={password && visible ? 'text' : type}
+        aria-describedby={hint ? id + '-hint' : undefined} />
+      {password && <button type="button" className="auth-reveal" aria-controls={id} aria-pressed={visible}
+        aria-label={visible ? t('Hide password') : t('Show password')} onClick={() => setVisible(v => !v)}>
+        {visible ? t('Hide') : t('Show')}
+      </button>}
+    </div>
+    {hint && <p className="auth-field-hint" id={id + '-hint'}>{hint}</p>}
+  </div>
+}
+
 /* Sign in with name (or the profile's sign-in e-mail) and password, or — one tap away — redeem a reset code from the admin, which
    sets a new password and signs in. `onPasskey`, when given, offers the passkey instead. The
    inputs carry the autocomplete names password managers look for, inside a real form. */
@@ -114,47 +149,42 @@ export function PasswordSignInSheet({ close, onPasskey }) {
     catch (e) { setErr(passwordError(e)) }
     finally { setBusy(false) }
   }
-  return <>
-    <h3>{reset ? t('Reset your password') : t('Sign in with password')}</h3>
-    <div className="muted small" style={{ marginBottom: 14 }}>{reset
+  return <div className="auth-sheet">
+    <AuthHeader close={close} eyebrow={reset ? t('LET’S GET YOU BACK IN') : t('SIGN IN TO MOV')}
+      title={reset ? t('Reset your password') : t('Welcome back.')}
+      description={reset
       ? t('Enter the code your admin gave you and choose a new password. It signs you out everywhere else.')
-      : t('Use your profile name (or the e-mail you added to it) and your password.')}</div>
-    <form onSubmit={submit} noValidate>
+      : t('Use your profile name or e-mail to keep going.')} />
+    <form className="auth-form" onSubmit={submit} noValidate aria-busy={busy}>
       {/* One field for both: the server looks an entry with an "@" up as an e-mail first. Not
           type="email", which would refuse a plain name. */}
-      <input ref={nameRef} className="input" name="username" autoComplete="username" placeholder={t('Name or e-mail')} maxLength={254}
+      <AuthInput inputRef={nameRef} label={t('Name or e-mail')} name="username" autoComplete="username" placeholder={t('Name or e-mail')} maxLength={254}
         value={name} onChange={e => setName(e.target.value)} {...field} />
-      <div style={{ height: 10 }} />
       {reset ? <>
-        <input className="input" name="reset-code" autoComplete="one-time-code" placeholder={t('Reset code')} maxLength={20}
+        <AuthInput label={t('Reset code')} icon="key" name="reset-code" autoComplete="one-time-code" placeholder={t('Reset code')} maxLength={20}
           value={code} onChange={e => setCode(e.target.value.toUpperCase())} {...field} style={codeStyle} />
-        <div style={{ height: 10 }} />
-        <input className="input" type="password" name="new-password" autoComplete="new-password" placeholder={t('New password')}
+        <AuthInput label={t('New password')} type="password" name="new-password" autoComplete="new-password" placeholder={t('New password')}
           value={next} onChange={e => setNext(e.target.value)} />
-        <div style={{ height: 10 }} />
-        <input className="input" type="password" name="new-password-again" autoComplete="new-password" placeholder={t('Repeat the password')}
-          value={again} onChange={e => setAgain(e.target.value)} />
-        <div className="dim small" style={{ marginTop: 6 }}>{t('At least {0} characters. A few unrelated words make a good one.', MIN_PASSWORD)}</div>
-      </> : <input className="input" type="password" name="password" autoComplete="current-password" placeholder={t('Password')}
+        <AuthInput label={t('Repeat password')} type="password" name="new-password-again" autoComplete="new-password" placeholder={t('Repeat the password')}
+          value={again} onChange={e => setAgain(e.target.value)} hint={t('At least {0} characters. A few unrelated words make a good one.', MIN_PASSWORD)} />
+      </> : <AuthInput key="signin-password" label={t('Password')} type="password" name="password" autoComplete="current-password" placeholder={t('Password')}
         value={pw} onChange={e => setPw(e.target.value)} />}
-      {err && <div className="small" role="alert" style={errStyle}>{err}</div>}
-      <div style={{ height: 12 }} />
-      <Button type="submit" variant="primary" disabled={busy}>{reset ? t('Set password & sign in') : t('Sign in')}</Button>
+      {err && <div className="auth-error" role="alert">{err}</div>}
+      <Button type="submit" variant="primary" trailingIcon="arrowRight" disabled={busy}>{busy ? t('Please wait…') : reset ? t('Set password & sign in') : t('Sign in')}</Button>
     </form>
-    <div style={{ height: 8 }} />
-    <Button type="button" variant="ghost" className="dim" onClick={() => { setErr(null); setMode(reset ? 'signin' : 'reset') }}>
+    <Button type="button" variant="ghost" className="auth-reset-link" onClick={() => { setErr(null); setMode(reset ? 'signin' : 'reset') }}>
       {reset ? t('Sign in with password') : t('Have a reset code from your admin?')}</Button>
     {onPasskey && !reset && webauthnOK() && <>
-      <div style={{ height: 8 }} />
-      <Button type="button" icon="fingerprint" onClick={() => { close(); onPasskey() }}>{t('Sign in with passkey')}</Button>
+      <div className="auth-or"><span>{t('or')}</span></div>
+      <Button type="button" variant="secondary" className="auth-passkey" icon="fingerprint" onClick={() => { close(); onPasskey() }}>{t('Sign in with passkey')}</Button>
     </>}
-  </>
+  </div>
 }
 export const openPasswordSignIn = onPasskey => ui().openSheet(close => <PasswordSignInSheet close={close} onPasskey={onPasskey} />)
 
 /* The password half of creating a profile. Name and invite code are the caller's state, so
    switching between passkey and password on the sign-up sheet keeps what was typed. */
-export function PasswordRegisterForm({ close, inviteOnly, name, setName, code, setCode }) {
+export function PasswordRegisterForm({ close, inviteOnly, name, setName, code, setCode, preferredUnit }) {
   const [email, setEmail] = useState('')
   const [pw, setPw] = useState('')
   const [again, setAgain] = useState('')
@@ -179,32 +209,25 @@ export function PasswordRegisterForm({ close, inviteOnly, name, setName, code, s
       st.setUser(u); close()
       if (hasData(useStore.getState().S)) { await st.pushState(); toast(t('Profile created, and this device’s data moved into it')) }
       else { await st.pullState(); toast(t('Welcome, {0}', u.name)) }
+      await rememberWeightUnit(preferredUnit)
     } catch (e) { setErr(passwordError(e)) }
     finally { setBusy(false) }
   }
-  return <form onSubmit={submit} noValidate>
-    <input className="input" name="username" autoComplete="username" placeholder={t('Your name')} maxLength={40}
+  return <form className="auth-form" onSubmit={submit} noValidate aria-busy={busy}>
+    <AuthInput label={t('Your name')} name="username" autoComplete="username" placeholder={t('Your name')} maxLength={40}
       value={name} onChange={e => setName(e.target.value)} {...field} />
-    <div style={{ height: 10 }} />
-    <input className="input" type="email" name="email" autoComplete="email" inputMode="email" placeholder={t('E-mail (optional)')} maxLength={254}
-      value={email} onChange={e => setEmail(e.target.value)} {...field} />
-    <div className="dim small" style={{ marginTop: 6 }}>{t('Lets you sign in with it instead of your name. Nothing is ever sent to it.')}</div>
-    {inviteOnly && <>
-      <div style={{ height: 10 }} />
-      <input className="input" placeholder={t('Invite code')} maxLength={40} value={code}
-        onChange={e => setCode(e.target.value.toUpperCase())} style={codeStyle} />
-      <div className="dim small" style={{ marginTop: 6 }}>{t('This app is invite-only. Enter the code you were given.')}</div>
-    </>}
-    <div style={{ height: 10 }} />
-    <input className="input" type="password" name="new-password" autoComplete="new-password" placeholder={t('Password')}
+    <AuthInput label={t('E-mail (optional)')} icon="envelope" type="email" name="email" autoComplete="email" inputMode="email" placeholder={t('E-mail (optional)')} maxLength={254}
+      value={email} onChange={e => setEmail(e.target.value)} {...field}
+      hint={t('Lets you sign in with it instead of your name. Nothing is ever sent to it.')} />
+    {inviteOnly && <AuthInput label={t('Invite code')} icon="key" placeholder={t('Invite code')} maxLength={40} value={code}
+      onChange={e => setCode(e.target.value.toUpperCase())} style={codeStyle}
+      hint={t('This app is invite-only. Enter the code you were given.')} />}
+    <AuthInput label={t('Password')} type="password" name="new-password" autoComplete="new-password" placeholder={t('Password')}
       value={pw} onChange={e => setPw(e.target.value)} />
-    <div style={{ height: 10 }} />
-    <input className="input" type="password" name="new-password-again" autoComplete="new-password" placeholder={t('Repeat the password')}
-      value={again} onChange={e => setAgain(e.target.value)} />
-    <div className="dim small" style={{ marginTop: 6 }}>{t('At least {0} characters. A few unrelated words make a good one.', MIN_PASSWORD)}</div>
-    {err && <div className="small" role="alert" style={errStyle}>{err}</div>}
-    <div style={{ height: 12 }} />
-    <Button type="submit" variant="primary" disabled={busy}>{t('Create profile')}</Button>
+    <AuthInput label={t('Repeat password')} type="password" name="new-password-again" autoComplete="new-password" placeholder={t('Repeat the password')}
+      value={again} onChange={e => setAgain(e.target.value)} hint={t('At least {0} characters. A few unrelated words make a good one.', MIN_PASSWORD)} />
+    {err && <div className="auth-error" role="alert">{err}</div>}
+    <Button type="submit" variant="primary" trailingIcon="arrowRight" disabled={busy}>{busy ? t('Please wait…') : t('Create profile')}</Button>
   </form>
 }
 
@@ -213,11 +236,13 @@ function PasswordRegisterSheet({ close }) {
   const config = useStore(s => s.config)
   const [name, setName] = useState('')
   const [code, setCode] = useState('')
-  return <>
-    <h3>{t('Create your profile')}</h3>
-    <div className="muted small" style={{ marginBottom: 14 }}>{t('Pick a name and a password. You sign in with both.')}</div>
-    <PasswordRegisterForm close={close} inviteOnly={!!config?.invite_only} name={name} setName={setName} code={code} setCode={setCode} />
-  </>
+  const [preferredUnit, setPreferredUnit] = useState(() => useStore.getState().S?.unit || 'kg')
+  return <div className="auth-sheet">
+    <AuthHeader close={close} eyebrow={t('YOUR MOV STARTS HERE')} title={t('Create your profile')}
+      description={t('Pick a name and a password. You sign in with both.')} />
+    <MeasurementUnitChoice value={preferredUnit} onChange={setPreferredUnit} />
+    <PasswordRegisterForm close={close} inviteOnly={!!config?.invite_only} name={name} setName={setName} code={code} setCode={setCode} preferredUnit={preferredUnit} />
+  </div>
 }
 export const openPasswordRegister = () => ui().openSheet(close => <PasswordRegisterSheet close={close} />)
 

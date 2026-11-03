@@ -37,25 +37,44 @@ describe('LeaderboardModal Component', () => {
     vi.restoreAllMocks()
   })
 
-  it('renders title, podium, and close button', async () => {
+  it('shows the returned people, their ranks, and a working close action', async () => {
     await act(async () => {
       root.render(<LeaderboardModal close={close} />)
     })
 
-    expect(host.querySelector('h2').textContent).toBe('Leaderboard')
-    expect(host.textContent).toContain('All-Time')
-    expect(host.textContent).toContain('Weekly')
+    expect(host.querySelector('h3').textContent).toBe('Rankings')
+    expect(host.textContent).toContain('All time')
+    expect(host.textContent).toContain('This week')
     expect(host.textContent).toContain('Streaks')
     expect(host.textContent).toContain('TitanLifter')
     expect(host.textContent).toContain('IronAdept')
     expect(host.textContent).toContain('RookieGamer')
-    expect(host.textContent).toContain('🥇')
-    expect(host.textContent).toContain('🥈')
-    expect(host.textContent).toContain('🥉')
+    expect(host.querySelectorAll('.rankings-list li')).toHaveLength(3)
+    expect(host.querySelector('.your-rank').textContent).toContain('#2')
 
     const closeBtn = host.querySelector('button[aria-label="Close"]')
     expect(closeBtn).toBeTruthy()
     act(() => closeBtn.click())
     expect(close).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows one real participant without inventing other podium places', async () => {
+    fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ entries: [{ id: 'u1', rank: 1, username: 'OnlyAthlete', totalXp: 100 }] }) })
+    await act(async () => { root.render(<LeaderboardModal close={close} />) })
+    expect(host.querySelectorAll('.rankings-list li')).toHaveLength(1)
+    expect(host.textContent).toContain('OnlyAthlete')
+    expect(host.textContent).not.toContain('Player 2')
+    expect(host.textContent).not.toContain('Player 3')
+  })
+
+  it('explains a loading failure and lets the user retry successfully', async () => {
+    fetch.mockResolvedValueOnce({ ok: false })
+    await act(async () => { root.render(<LeaderboardModal close={close} />) })
+    expect(host.textContent).toContain('Rankings couldn’t load')
+    expect(host.textContent).not.toContain('A fresh start for everyone')
+    const retry = [...host.querySelectorAll('button')].find(button => button.textContent === 'Try again')
+    await act(async () => { retry.click() })
+    expect(host.textContent).toContain('TitanLifter')
+    expect(host.textContent).not.toContain('Rankings couldn’t load')
   })
 })

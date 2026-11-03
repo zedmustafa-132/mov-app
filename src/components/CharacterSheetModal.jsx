@@ -15,9 +15,9 @@ export function CharacterSheetModal({ close }) {
 
   const STAT_CONFIG = [
     { key: 'strength', name: t('Strength'), color: 'var(--red)', icon: 'dumbbell', desc: t('Lifting volume, compound weights, personal records') },
-    { key: 'endurance', name: t('Endurance'), color: 'var(--blue)', icon: 'figureRun', desc: t('Cardio minutes, training frequency, sustained stamina') },
-    { key: 'agility', name: t('Agility'), color: 'var(--green)', icon: 'figureStrength', desc: t('Bodyweight control, calisthenics, functional mobility') },
-    { key: 'vitality', name: t('Vitality'), color: 'var(--orange)', icon: 'bolt', desc: t('Nutrition targets, protein consistency, hydration balance') },
+    { key: 'endurance', name: t('Endurance'), color: '#5EA8FF', icon: 'figureRun', desc: t('Cardio minutes, training frequency, sustained stamina') },
+    { key: 'agility', name: t('Agility'), color: '#FFB347', icon: 'figureStrength', desc: t('Bodyweight control, calisthenics, functional mobility') },
+    { key: 'vitality', name: t('Vitality'), color: '#FF6A13', icon: 'bolt', desc: t('Nutrition targets, protein consistency, hydration balance') },
     { key: 'discipline', name: t('Discipline'), color: 'var(--purple)', icon: 'shield', desc: t('Active logging streak, daily check-ins, quest completions') }
   ]
 
@@ -38,11 +38,13 @@ export function CharacterSheetModal({ close }) {
         </div>
         <div className="row" style={{ gap: 6, alignItems: 'center' }}>
           <button
-            className="btn xs outline"
-            style={{ borderRadius: 8, padding: '4px 8px', color: 'var(--amber, #f59e0b)', borderColor: 'rgba(234, 179, 8, 0.4)', fontWeight: 700 }}
+            className="iconbtn"
+            aria-label={t('Leaderboard')}
+            title={t('Leaderboard')}
+            style={{ color: 'var(--amber)' }}
             onClick={() => { close(); openSheet(c => <LeaderboardModal close={c} />) }}
           >
-            🏆 {t('Leaderboard')}
+            <Icon name="trophy" />
           </button>
           <button className="iconbtn" onClick={close} aria-label={t('Close')}><Icon name="xmark" /></button>
         </div>
@@ -52,7 +54,7 @@ export function CharacterSheetModal({ close }) {
       <div style={{
         background: 'linear-gradient(135deg, var(--surface-2) 0%, var(--surface-3) 100%)',
         padding: '14px 16px',
-        borderRadius: 'var(--r-sm)',
+        borderRadius: 20,
         border: '1px solid var(--acc)'
       }}>
         <div className="row between" style={{ alignItems: 'flex-start', marginBottom: 6 }}>
@@ -66,7 +68,7 @@ export function CharacterSheetModal({ close }) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 4px 14px -2px var(--acc)'
+              overflow: 'hidden'
             }}>
               <Icon name={levelInfo.form.icon} style={{ fontSize: 24 }} />
             </div>
@@ -145,7 +147,7 @@ export function CharacterSheetModal({ close }) {
 
       {/* Tab 2: Badges */}
       {tab === 'badges' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, maxHeight: 380, overflowY: 'auto' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, minWidth: 0 }}>
           {badges.map(b => (
             <div
               key={b.id}
@@ -153,7 +155,7 @@ export function CharacterSheetModal({ close }) {
                 background: b.unlocked ? 'var(--surface-2)' : 'var(--surface-3)',
                 padding: '10px 12px',
                 borderRadius: 'var(--r-sm)',
-                opacity: b.unlocked ? 1 : 0.6,
+                opacity: b.unlocked ? 1 : 0.85,
                 border: b.unlocked ? '1px solid var(--acc-line)' : '1px solid transparent',
                 display: 'flex',
                 flexDirection: 'column',
@@ -174,7 +176,7 @@ export function CharacterSheetModal({ close }) {
                   <Icon name={b.icon} style={{ fontSize: 14 }} />
                 </span>
                 {b.unlocked ? (
-                  <span className="small" style={{ color: 'var(--green)', fontWeight: 600 }}>✓ Unlocked</span>
+                  <span className="small" style={{ color: '#5EA8FF', fontWeight: 600 }}>Unlocked</span>
                 ) : (
                   <span className="dim small">{b.progress}/{b.maxProgress}</span>
                 )}
@@ -189,7 +191,7 @@ export function CharacterSheetModal({ close }) {
 
       {/* Tab 3: Forms progression */}
       {tab === 'forms' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 380, overflowY: 'auto' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
           {[1, 2, 3, 4, 5, 6, 7, 8].map(tier => {
             const formInfo = levelInfo.form.tier === tier ? levelInfo.form : {
               name: `Tier ${tier}`,

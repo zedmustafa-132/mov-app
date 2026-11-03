@@ -8,7 +8,7 @@ import { auditCat, auditLine, fmtWhen } from '../lib/audit.js'
 import { workoutVolume, setsDone } from '../lib/history.js'
 import { confirmSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
-import { Button } from '../components/ui.jsx'
+import { Button, SearchField } from '../components/ui.jsx'
 import AdminCoach from './AdminCoach.jsx'
 import '../admin.css'
 
@@ -195,6 +195,11 @@ function UserDetail({ id, viewerOwner, onChanged, close }) {
       <div className="adm-hint">Lost every device and passkey? A one-time code gives a new device a passkey for this profile. Works with or without password sign-in.</div>
     </>}
     {u.owner && u.id !== me?.id && <div className="adm-hint" style={{ marginTop: 14 }}>A locked-out owner gets a recovery code from the server itself: <code>docker compose exec api node recover.js "{u.name}"</code></div>}
+    <h4 className="sec">Food & water progress</h4>
+    {d.nutrition?.length ? <div className="list">{d.nutrition.map(day => <div className="row between" key={day.date}>
+      <div><b>{fmtDate(day.date, true)}</b><div className="small muted">{day.meals} food entries · {day.proteinG} g protein</div></div>
+      <div style={{ textAlign: 'right' }}><b>{day.kcal} kcal</b><div className="small muted">{(day.waterMl / 1000).toFixed(2)} L water</div></div>
+    </div>)}</div> : <div className="adm-empty">No food or water synced yet.</div>}
     <h4 className="sec">Workout history</h4>
     {workouts.length ? <div className="list" style={{ gap: 0 }}>
       {workouts.slice(0, 60).map(w => <div key={w.id} className="row between" style={{ padding: '9px 2px', borderBottom: '1px solid var(--sep)' }}>
@@ -322,6 +327,7 @@ export default function Admin() {
   const user = useStore(s => s.user)
   const openSheet = useUI(s => s.openSheet)
   const [users, setUsers] = useState(null)
+  const [userQuery, setUserQuery] = useState('')
   const [usersErr, setUsersErr] = useState(null)   // why the last load failed, until one succeeds
   const [invites, setInvites] = useState(null)
   const [inviteOnly, setInviteOnly] = useState(false)
@@ -348,6 +354,7 @@ export default function Admin() {
   const liveUsers = (users || []).filter(u => u.live)
   const activeCount = (users || []).filter(u => u.lastSync && Date.now() - u.lastSync < 7 * 86400000).length
   const disabledCount = (users || []).filter(u => u.disabled).length
+  const filteredUsers = (users || []).filter(u => `${u.name} ${u.email || ''}`.toLowerCase().includes(userQuery.trim().toLowerCase()))
 
   return <div className="narrow">
     <div className="hdr">
@@ -357,7 +364,7 @@ export default function Admin() {
       <button className="iconbtn" onClick={() => { loadUsers(); loadInvites(); setTick(n => n + 1) }} aria-label="refresh">↻</button>
     </div>
     <div className="adm-intro">
-      Everything about running this instance: who uses it, how they get in, the AI Coach, and what has happened on it. Nothing here shows anyone's training data beyond counts.
+      Manage your testers, review their synced progress, and control who can join.
     </div>
 
     {usersErr && <div className="card" role="alert" style={{ borderColor: 'var(--red)' }}>
@@ -385,26 +392,26 @@ export default function Admin() {
       </div>)}
     </div>}
 
-    {/* The Coach setup. Renders nothing at all unless the instance offers the Coach, so an admin
-        page on a box that never enabled it is byte-for-byte the page it was before. */}
-    <div ref={coachRef} className="adm-coach-anchor"><AdminCoach /></div>
-
-    <InvitesCard invites={invites} reload={loadInvites} inviteOnly={inviteOnly} />
-
     <div className="card">
       <h2 style={{ margin: 0 }}>Users</h2>
-      <div className="adm-lead">Everyone with a profile on this instance. Tap one to see their activity, to disable the account (nothing is deleted) or to delete it with all their data for good.</div>
+      <div className="adm-lead">Choose a person to see workouts, food and water progress, and account controls.</div>
+      <SearchField placeholder="Find a user by name or email" aria-label="Find a user" value={userQuery} onChange={event => setUserQuery(event.target.value)} onClear={() => setUserQuery('')} />
       <div className="list">
-        {(users || []).map(u => <div key={u.id} className="item" onClick={() => openUser(u.id)} style={u.disabled ? { opacity: .55 } : null}>
+        {filteredUsers.map(u => <div key={u.id} className="item" role="button" tabIndex={0} aria-label={`View ${u.name} progress`} onClick={() => openUser(u.id)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openUser(u.id) } }} style={u.disabled ? { opacity: .55 } : null}>
           <div className="grow"><div className="tt">{u.live && <Icon name="dot" style={{ fontSize: 9, color: 'var(--green)', display: 'inline-block', marginInlineEnd: 5 }} />}{u.name} {u.admin && <span className="adm-pill acc" style={{ marginInlineStart: 4 }}>{u.owner ? 'owner' : 'admin'}</span>}{u.disabled && <span className="adm-pill bad" style={{ marginInlineStart: 4 }}>disabled</span>}</div>
             <div className="ss">{u.live ? 'training now · ' + u.live.name : u.workouts + ' workouts' + (u.lastWorkout ? ' · last ' + fmtDate(u.lastWorkout) : '') + ' · last sync ' + rel(u.lastSync)}</div>
             {u.email && <div className="ss" title="sign-in e-mail">{u.email}</div>}</div>
           {u.hasPush && <Icon name="bell" title="push notifications on" style={{ fontSize: 15, color: 'var(--label-3)' }} />}<Icon name="chevronRight" className="chev" />
         </div>)}
         {users && !users.length && <div className="adm-empty">No users yet.</div>}
+        {users?.length > 0 && !filteredUsers.length && <div className="adm-empty">No matching users.</div>}
       </div>
     </div>
 
-    <div style={{ marginTop: 14 }}><AuditCard tick={tick} owner={viewerOwner} /></div>
+    <InvitesCard invites={invites} reload={loadInvites} inviteOnly={inviteOnly} />
+    <details className="adm-fold" open={toCoach || undefined}><summary>Server tools <Icon name="chevronRight" className="chev" /></summary>
+      <div ref={coachRef} className="adm-coach-anchor"><AdminCoach /></div>
+      <div style={{ marginTop: 14 }}><AuditCard tick={tick} owner={viewerOwner} /></div>
+    </details>
   </div>
 }

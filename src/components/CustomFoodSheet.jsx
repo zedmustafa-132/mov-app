@@ -60,7 +60,7 @@ export function CustomFoodSheet({ initial, onSaved, close }) {
   }
 
   return (
-    <div className="custom-food-sheet" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div className="custom-food-sheet kb-lift" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div className="row between">
         <h3>{initial ? t('Edit Custom Food') : t('Create Custom Food')}</h3>
         <button className="iconbtn" onClick={close} aria-label={t('Close')}><Icon name="xmark" /></button>
@@ -70,6 +70,7 @@ export function CustomFoodSheet({ initial, onSaved, close }) {
         <label className="lbl2" style={{ marginBottom: 4, display: 'block' }}>{t('Food Name *')}</label>
         <TextField
           placeholder={t('e.g. Whey Protein Isolate')}
+          aria-label={t('Food name')}
           value={name}
           onChange={e => setName(e.target.value)}
           autoFocus
@@ -80,6 +81,7 @@ export function CustomFoodSheet({ initial, onSaved, close }) {
         <label className="lbl2" style={{ marginBottom: 4, display: 'block' }}>{t('Brand / Maker (optional)')}</label>
         <TextField
           placeholder={t('e.g. Optimum Nutrition')}
+          aria-label={t('Brand (optional)')}
           value={brand}
           onChange={e => setBrand(e.target.value)}
         />
@@ -90,6 +92,7 @@ export function CustomFoodSheet({ initial, onSaved, close }) {
           <label className="lbl2" style={{ marginBottom: 4, display: 'block' }}>{t('Serving Size')}</label>
           <NumberField
             value={servingSize}
+            aria-label={t('Serving size')}
             onChange={setServingSize}
             decimal={false}
           />
@@ -98,6 +101,7 @@ export function CustomFoodSheet({ initial, onSaved, close }) {
           <label className="lbl2" style={{ marginBottom: 4, display: 'block' }}>{t('Unit')}</label>
           <TextField
             value={servingUnit}
+            aria-label={t('Serving unit')}
             onChange={e => setServingUnit(e.target.value)}
             placeholder="g, scoop, bar"
           />
@@ -106,28 +110,28 @@ export function CustomFoodSheet({ initial, onSaved, close }) {
 
       <div style={{ borderTop: 'var(--hair) solid var(--sep)', paddingTop: 10 }}>
         <div className="lbl2" style={{ marginBottom: 8 }}>{t('Nutrients per Serving')}</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+        <div className="nutrient-fields">
           <div>
             <span className="small muted">{t('Calories (kcal)')}</span>
-            <NumberField value={calories} onChange={setCalories} decimal={false} />
+            <NumberField value={calories} onChange={setCalories} decimal={false} aria-label={t('Calories (kcal)')} />
           </div>
           <div>
             <span className="small muted" style={{ color: 'var(--blue)' }}>{t('Protein (g)')}</span>
-            <NumberField value={protein} onChange={setProtein} decimal={true} />
+            <NumberField value={protein} onChange={setProtein} decimal={true} aria-label={t('Protein (g)')} />
           </div>
           <div>
             <span className="small muted" style={{ color: 'var(--orange)' }}>{t('Carbs (g)')}</span>
-            <NumberField value={carbs} onChange={setCarbs} decimal={true} />
+            <NumberField value={carbs} onChange={setCarbs} decimal={true} aria-label={t('Carbs (g)')} />
           </div>
           <div>
             <span className="small muted" style={{ color: 'var(--yellow)' }}>{t('Fat (g)')}</span>
-            <NumberField value={fat} onChange={setFat} decimal={true} />
+            <NumberField value={fat} onChange={setFat} decimal={true} aria-label={t('Fat (g)')} />
           </div>
         </div>
       </div>
 
       <div style={{ marginTop: 8 }}>
-        <Button variant="primary" icon="check" onClick={handleSave}>
+        <Button variant="primary" icon="check" onClick={handleSave} disabled={!name.trim()}>
           {t('Save Food')}
         </Button>
       </div>

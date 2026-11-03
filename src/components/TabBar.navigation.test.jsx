@@ -37,44 +37,44 @@ const go = async to => { await act(async () => router.navigate(to)) }
 describe('root tab history', () => {
   it('does not accumulate a back stack when switching tabs repeatedly', async () => {
     for (let i = 0; i < 3; i++) {
-      for (const label of ['Plan', 'Stats', 'Exercises', 'Home']) await tap(label)
+      for (const label of ['Progress', 'Today']) await tap(label)
     }
-    await tap('Plan')
-    expect(router.state.location.pathname).toBe('/plan')
+    await tap('Progress')
+    expect(router.state.location.pathname).toBe('/stats')
     await go(-1)
-    expect(router.state.location.pathname).toBe('/plan')
+    expect(router.state.location.pathname).toBe('/stats')
   })
 
   it('ignores a tap on the current root, but clears a tab query when returning to its root', async () => {
     const key = router.state.location.key
-    await tap('Home')
+    await tap('Today')
     expect(router.state.location.key).toBe(key)
     await go('/stats?range=month')
-    await tap('Stats')
+    await tap('Progress')
     expect(router.state.location.pathname).toBe('/stats')
     expect(router.state.location.search).toBe('')
   })
 
   it('still pushes a detail page and returns to the tab it opened from', async () => {
-    await tap('Plan')
-    await go('/plan/r/one')
+    await tap('Progress')
+    await go('/stats/ex/one')
     await go(-1)
-    expect(router.state.location.pathname).toBe('/plan')
+    expect(router.state.location.pathname).toBe('/stats')
     await go('/settings/workout')
     await go(-1)
-    expect(router.state.location.pathname).toBe('/plan')
+    expect(router.state.location.pathname).toBe('/stats')
   })
 
   it('opens a different tab root from a nested page of the active tab', async () => {
-    await go('/plan/r/one')
-    await tap('Plan')
-    expect(router.state.location.pathname).toBe('/plan')
+    await go('/stats/ex/one')
+    await tap('Progress')
+    expect(router.state.location.pathname).toBe('/stats')
     expect(router.state.historyAction).toBe('REPLACE')
   })
 
   it('preserves the workout chooser return path', async () => {
     useStore.setState({ S: { ...useStore.getState().S, routines: [] } })
-    await tap('Start')
+    await tap('Train')
     expect(router.state.location.pathname).toBe('/workout')
     await go(-1)
     expect(router.state.location.pathname).toBe('/home')

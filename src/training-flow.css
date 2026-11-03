@@ -1,0 +1,97 @@
+.player-level-icon { color: var(--acc); background: var(--acc-soft); }
+.player-level-icon .icn { width: 23px; height: 23px; }
+.welcome-game-world .welcome-emblem { position: absolute; width: 132px; height: 132px; left: calc(50% - 66px); top: 58px; filter: drop-shadow(0 7px 0 #6c3519); animation: mov-spark-float 5s ease-in-out infinite; }
+.training-start-card { position: relative; overflow: hidden; padding: 26px; border: 1px solid var(--acc-line); border-radius: 26px; background: linear-gradient(115deg, var(--surface), var(--acc-soft)); margin-bottom: 20px; }
+.training-eyebrow { display: flex; align-items: center; gap: 8px; color: var(--acc); font-size: 10px; font-weight: 750; letter-spacing: .07em; }
+.training-eyebrow .icn { width: 22px; height: 22px; }
+.training-start-card h2 { max-width: 550px; font-size: clamp(26px, 6vw, 36px); line-height: 1.1; font-weight: 650; letter-spacing: -.04em; margin: 24px 0 12px; overflow-wrap: anywhere; }
+.training-start-card p { max-width: 390px; font-size: 13px; line-height: 1.65; color: var(--label-2); margin-bottom: 24px; }
+.training-start-card .btn + .btn { margin-top: 12px; }
+.training-plan-links { display: grid; gap: 12px; margin-bottom: 28px; }
+.training-plan-links > button { display: flex; align-items: center; gap: 13px; width: 100%; text-align: start; min-height: 88px; padding: 18px; border: 1px solid var(--sep-op); border-radius: 22px; background: var(--surface); color: var(--label); }
+.training-plan-links > button > span:nth-child(2) { flex: 1; min-width: 0; }
+.training-link-icon { width: 42px; height: 42px; display: grid; place-items: center; flex: none; border-radius: 13px; background: var(--acc-soft); color: var(--acc); }
+.training-link-icon .icn { width: 21px; height: 21px; }
+.training-plan-links b { display: block; font-size: 14px; font-weight: 650; }
+.training-plan-links small { display: block; margin-top: 5px; color: var(--label-2); font-size: 11px; line-height: 1.5; }
+.training-plan-links > button > .icn { width: 15px; height: 15px; color: var(--label-2); flex: none; }
+.training-plan-hint { margin-top: 16px; color: var(--label-2); font-size: 12px; line-height: 1.6; }
+.training-routines { margin-bottom: 28px; }
+.training-routines > .btn { width: 100%; margin-top: 14px; }
+.workout-session-empty.workout-setup-card { padding: 28px 22px; text-align: start; }
+.workout-setup-card h2 { font-size: 25px; }
+.workout-setup-card p { font-size: 13px; line-height: 1.7; margin-bottom: 24px; }
+.workout-setup-card .btn { width: 100%; }
+.workout-setup-card .btn.ghost { margin-top: 12px; }
+.workout-setup-icon { width: 56px; height: 56px; display: grid; place-items: center; background: var(--acc-soft); color: var(--acc); border: 1px solid var(--acc-line); border-radius: 18px; margin-bottom: 24px; }
+.workout-setup-icon .icn { width: 30px; height: 30px; }
+.workout-first-help { display: flex; align-items: flex-start; gap: 9px; color: var(--label-2); padding: 12px 14px; margin: 12px 0 18px; background: var(--surface); border: 1px solid var(--sep-op); border-radius: 14px; font-size: 12px; line-height: 1.55; }
+.workout-first-help .icn { width: 18px; height: 18px; flex: none; color: var(--acc); }
+.workout-finish-summary > p { margin: 0 0 20px; }
+.workout-finish-summary .finish-save-routine { margin-top: 12px; }
+.finish-workout-details { margin-top: 20px; border-top: 1px solid var(--sep); }
+.finish-workout-details > summary { display: flex; justify-content: space-between; align-items: center; padding: 18px 2px; text-align: start; list-style: none; cursor: pointer; color: var(--label-2); font-size: 13px; }
+.finish-workout-details > summary::-webkit-details-marker { display: none; }
+.finish-workout-details > summary .icn { width: 16px; height: 16px; }
+.finish-workout-details[open] > summary .icn { transform: rotate(180deg); }
+.workout-target-details { margin-top: 7px; }
+.workout-target-details > summary { display: flex; align-items: center; gap: 6px; cursor: pointer; list-style: none; color: var(--label-2); font-size: 11px; min-height: 32px; }
+.workout-target-details > summary::-webkit-details-marker { display: none; }
+.workout-target-details > summary .icn { width: 12px; height: 12px; }
+.workout-target-details[open] > summary .icn { transform: rotate(180deg); }
+.s-onboarding .onboarding-skip { width: 100%; justify-content: space-between; padding-inline: 0; margin: -8px 0 20px; font-size: 12px; min-height: 42px; }
+@media (min-width: 650px) { .training-plan-links { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+
+/* The first workout has one clear action; the full planner stays one link away. */
+.first-workout-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.home-quick-exercise { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 44px; margin-top: 4px; color: var(--label-2); font-size: 12px; }
+.home-quick-exercise .icn { width: 15px; height: 15px; }
+.first-workout-heading .iconbtn { width: 44px; height: 44px; flex: none; }
+.first-workout-sheet > h3 { font-size: 32px; line-height: 1.1; letter-spacing: -.04em; margin: 8px 0 10px; }
+.first-workout-intro { max-width: 370px; font-size: 14px; line-height: 1.6; color: var(--label-2); margin: 0 0 18px; }
+.first-workout-facts { display: flex; flex-wrap: wrap; gap: 12px 18px; color: var(--label-2); font-size: 12px; margin-bottom: 20px; }
+.first-workout-facts span { display: inline-flex; align-items: center; gap: 6px; }
+.first-workout-facts .icn { width: 16px; height: 16px; color: var(--acc); }
+.first-workout-moves { overflow: hidden; border: 1px solid var(--sep-op); border-radius: 20px; background: var(--surface); }
+.first-workout-move { display: flex; align-items: center; gap: 12px; padding: 12px; min-height: 78px; }
+.first-workout-move + .first-workout-move { border-top: 1px solid var(--sep-op); }
+.first-workout-thumb, .beginner-guide-thumb { display: grid; place-items: center; flex: none; width: 54px; height: 54px; overflow: hidden; border-radius: 14px; background: var(--surface-2); }
+.first-workout-thumb > *, .beginner-guide-thumb > * { width: 100%; height: 100%; object-fit: contain; }
+.first-workout-thumb > .icn, .beginner-guide-thumb > .icn { width: 26px; height: 26px; color: var(--acc); }
+.first-workout-move > div { flex: 1; min-width: 0; }
+.first-workout-move b { display: block; font-size: 14px; font-weight: 650; text-transform: capitalize; overflow-wrap: anywhere; }
+.first-workout-move small { display: block; color: var(--label-2); font-size: 11px; margin-top: 5px; }
+.first-workout-number { font-size: 12px; color: var(--label-2); padding: 8px; }
+.first-workout-note { color: var(--label-2); font-size: 12px; line-height: 1.6; margin: 15px 0 20px; }
+.first-workout-sheet > .btn { width: 100%; min-height: 50px; }
+.first-workout-sheet > .btn.ghost { margin-top: 6px; }
+.first-workout-plans { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; min-height: 44px; color: var(--label-2); font-size: 12px; }
+.first-workout-plans .icn { width: 13px; height: 13px; }
+.beginner-exercise-guide { margin: 14px 0; padding: 12px; border-radius: 16px; background: var(--surface-2); }
+.beginner-guide-copy { display: flex; align-items: center; gap: 12px; }
+.beginner-guide-copy p { margin: 0; color: var(--label-2); font-size: 12px; line-height: 1.6; }
+.beginner-exercise-guide > button { display: flex; align-items: center; gap: 7px; width: 100%; min-height: 44px; padding: 9px 0 0; color: var(--acc); font-size: 12px; font-weight: 650; }
+.beginner-exercise-guide > button .icn { width: 16px; height: 16px; }
+.beginner-exercise-guide > button .icn:last-child { margin-inline-start: auto; }
+.guided-set-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 18px 0 10px; }
+.guided-set-heading span { padding: 7px 11px; border-radius: 99px; color: var(--acc); background: var(--acc-soft); font-size: 12px; }
+.guided-set-heading b { color: var(--label-2); font-size: 12px; font-weight: 550; }
+.guided-workout .focus-tags, .guided-workout .focus-guidance { display: none; }
+.guided-added-weight { margin: 0 0 8px; }
+.guided-added-weight summary { display: flex; align-items: center; justify-content: space-between; min-height: 44px; color: var(--label-2); cursor: pointer; list-style: none; font-size: 12px; }
+.guided-added-weight summary::-webkit-details-marker { display: none; }
+.guided-added-weight summary .icn { width: 13px; height: 13px; }
+.guided-added-weight[open] summary .icn { transform: rotate(180deg); }
+.guided-log-hint { margin: 12px 0 0; color: var(--label-2); font-size: 11px; line-height: 1.5; }
+.s-onboarding .onboarding-skip.onboarding-start-now { min-height: 52px; justify-content: center; gap: 10px; padding-inline: 18px; margin: 0 0 24px; font-size: 14px; }
+.beginner-how-to-heading { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+.beginner-how-to-heading h3 { flex: 1; font-size: 24px; line-height: 1.2; margin: 0; }
+.beginner-how-to-heading .iconbtn { width: 44px; height: 44px; flex: none; }
+.beginner-steps { display: grid; gap: 16px; list-style: none; padding: 0; margin: 22px 0; }
+.beginner-steps li { display: flex; align-items: flex-start; gap: 12px; }
+.beginner-steps li > span { display: grid; place-items: center; width: 28px; height: 28px; flex: none; border-radius: 50%; background: var(--acc-soft); color: var(--acc); font-size: 12px; }
+.beginner-steps p { margin: 3px 0 0; color: var(--label-2); font-size: 13px; line-height: 1.6; }
+.beginner-how-to > .btn { width: 100%; min-height: 48px; }
+.beginner-how-to > .btn.ghost { margin-top: 8px; }
+@media (max-width: 380px) { .first-workout-sheet > h3 { font-size: 28px; } .first-workout-move { gap: 9px; padding: 10px; } .beginner-guide-copy { gap: 9px; } .beginner-guide-thumb { width: 44px; height: 44px; } }
+@media (prefers-reduced-motion: no-preference) { .guided-workout .focus-card { animation: mov-guided-enter .22s ease-out; } @keyframes mov-guided-enter { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } } }

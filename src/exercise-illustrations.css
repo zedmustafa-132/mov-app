@@ -1,0 +1,34 @@
+.exercise-illustration { --demo-skin: #dab18f; --demo-shirt: var(--acc, #ff8a37); --demo-pants: #727779; --demo-weight: #b7b9b6; display: block; width: 100%; overflow: visible; }
+.exercise-illustration line, .exercise-illustration path { stroke-linecap: round; stroke-linejoin: round; }
+.exercise-illustration .demo-shadow { fill: var(--label); opacity: .045; }
+.exercise-illustration .demo-floor { fill: none; stroke: var(--sep); stroke-width: 1.5; }
+.exercise-illustration .demo-neck { stroke: var(--demo-skin); stroke-width: 12; }
+.exercise-illustration .demo-upper-arm { stroke: var(--demo-skin); stroke-width: 12; }
+.exercise-illustration .demo-forearm { stroke: var(--demo-skin); stroke-width: 10; }
+.exercise-illustration .demo-shirt { fill: var(--demo-shirt); stroke: var(--demo-shirt); stroke-width: 6; }
+.exercise-illustration .demo-shorts { fill: var(--demo-pants); }
+.exercise-illustration .demo-thigh { stroke: var(--demo-pants); stroke-width: 17; }
+.exercise-illustration .demo-shin { stroke: var(--demo-pants); stroke-width: 13; }
+.exercise-illustration .demo-shoe { stroke: var(--label); stroke-width: 10; }
+.exercise-illustration .demo-head { fill: var(--demo-skin); }
+.exercise-illustration .demo-hair { fill: #3a3530; }
+.exercise-illustration .demo-far { opacity: .65; }
+.exercise-illustration .demo-far.is-front { opacity: 1; }
+.exercise-illustration .demo-weight-bar { stroke: var(--demo-weight); stroke-width: 4; }
+.exercise-illustration .demo-vbar { fill: none; stroke: var(--demo-weight); stroke-width: 4; }
+.exercise-illustration .demo-weight { fill: var(--demo-weight); stroke: var(--surface-3); stroke-width: 1; }
+.exercise-illustration .demo-bench { fill: none; stroke: #727779; stroke-width: 5; }
+.exercise-illustration .demo-bench-pad { stroke: #979b97; stroke-width: 9; }
+.exercise-illustration .demo-machine { fill: none; stroke: var(--sep); stroke-width: 5; }
+.exercise-illustration .demo-cable { stroke: var(--label-3); stroke-width: 1.5; }
+svg.exercise-illustration.thumb { display: block; background: var(--surface-3); border: 1px solid var(--sep-op); overflow: hidden; }
+.exmedia.illustration-media { padding: 10px 14px 12px; background: linear-gradient(140deg, var(--surface-3), var(--surface)); border: 1px solid var(--sep-op); }
+.illustration-media-heading { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; min-height: 30px; font-size: 10px; font-weight: 600; letter-spacing: .04em; color: var(--label-2); }
+.illustration-play { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--surface); color: var(--label); border: 1px solid var(--sep-op); }
+.illustration-play .icn { width: 13px; height: 13px; }
+.illustration-media > .exercise-illustration { height: 230px; }
+.illustration-cue { margin: 3px 0 8px; text-align: center; font-size: 11px; line-height: 1.5; color: var(--label-2); }
+.illustration-media:has(> .giftoggle) { padding-bottom: 36px; }
+.illustration-media.compact > .exercise-illustration { height: 140px; }
+.illustration-media.mini > .exercise-illustration { height: 84px; }
+.illustration-media.mini .illustration-media-heading { display: none; }

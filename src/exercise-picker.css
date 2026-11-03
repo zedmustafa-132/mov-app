@@ -1,0 +1,52 @@
+.exercise-picker .picker-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.exercise-picker .picker-heading h3 { margin: 0 0 5px; }
+.exercise-picker .picker-heading p { margin: 0; color: var(--label-2); font-size: 12px; line-height: 1.5; }
+.exercise-picker .picker-heading .iconbtn { flex: none; }
+.exercise-picker .picker-search { padding-top: 2px; padding-bottom: 12px; }
+.exercise-picker .picker-search .search-row { gap: 8px; }
+.exercise-picker .picker-search .search { min-width: 0; }
+.exercise-picker .picker-search .picker-done { flex: none; min-height: 44px; padding: 10px 15px; margin: 0; font-size: 13px; }
+.exercise-picker .picker-added-summary { min-height: 19px; margin-top: 8px; font-size: 11px; color: var(--label-2); display: flex; align-items: center; gap: 5px; }
+.exercise-picker .picker-added-summary.has-added { color: var(--acc); }
+.exercise-picker .picker-added-summary .icn { height: 13px; width: 13px; }
+.exercise-picker .picker-quick-tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 0 13px; }
+.exercise-picker .picker-quick-tabs button { flex: 1 0 auto; display: flex; justify-content: center; align-items: center; gap: 5px; padding: 9px 10px; min-height: 40px; border: 1px solid var(--sep); border-radius: 11px; font-size: 11px; font-weight: 600; background: var(--surface); color: var(--label-2); }
+.exercise-picker .picker-quick-tabs button[aria-pressed="true"] { color: var(--on-acc); background: var(--acc); border-color: var(--acc); }
+.exercise-picker .picker-quick-tabs .icn { width: 13px; height: 13px; }
+.exercise-picker .picker-filter-tools { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 12px; }
+.exercise-picker .picker-filter-tools .simple-filters { flex: 1; margin: 0; min-width: 0; border: 1px solid var(--sep); border-radius: 14px; padding: 0 12px; }
+.exercise-picker .picker-filter-tools summary { font-size: 12px; color: var(--label); min-height: 42px; }
+.exercise-picker .picker-filter-tools .picker-muscles { flex: none; min-height: 44px; margin: 0; padding: 9px 12px; font-size: 12px; }
+.exercise-picker .picker-filter-tools:has(details[open]) { flex-wrap: wrap; }
+.exercise-picker .picker-filter-tools:has(details[open]) .simple-filters { flex-basis: 100%; }
+.exercise-picker .picker-suggestions-title { margin: 18px 0 10px; font-size: 13px; font-weight: 650; color: var(--label); }
+.exercise-picker .picker-suggestions { display: flex; flex-direction: column; gap: 8px; }
+.exercise-picker .picker-choice, .exercise-picker .picker-result { display: flex; align-items: center; gap: 10px; padding: 11px; border: 1px solid var(--sep-op); border-radius: 16px; background: var(--surface); }
+.exercise-picker .picker-choice .thumb, .exercise-picker .picker-result .thumb { width: 48px; height: 48px; border-radius: 12px; flex: none; }
+.exercise-picker .picker-choice .grow, .exercise-picker .picker-result .grow { min-width: 0; }
+.exercise-picker .picker-detail-button { display: block; flex: 1; min-width: 0; padding: 2px 0; border: 0; border-radius: 6px; text-align: start; color: inherit; background: transparent; cursor: pointer; }
+.exercise-picker .picker-detail-button > .tt, .exercise-picker .picker-detail-button > .picker-choice-title, .exercise-picker .picker-detail-button > .ss { display: block; }
+.exercise-picker .picker-detail-button:focus-visible { outline-offset: 4px; }
+.exercise-picker .picker-choice-title, .exercise-picker .picker-result .tt { font-size: 13px; line-height: 1.35; font-weight: 600; overflow-wrap: anywhere; }
+.exercise-picker .picker-choice .ss, .exercise-picker .picker-result .ss { margin-top: 4px; font-size: 10px; line-height: 1.4; }
+.exercise-picker .picker-detail-hint { display: inline-flex; align-items: center; gap: 2px; color: var(--label-3); font-size: 10px; margin-top: 5px; }
+.exercise-picker .picker-detail-hint .icn { width: 10px; height: 10px; }
+.exercise-picker .picker-add-button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; flex: none; width: auto; height: auto; min-height: 44px; min-width: 58px; padding: 8px 10px; border-radius: 11px; border: 1px solid var(--acc-line); color: var(--acc); background: var(--acc-soft); font-size: 11px; font-weight: 650; white-space: nowrap; }
+.exercise-picker .picker-add-button .icn { width: 14px; height: 14px; }
+.exercise-picker .picker-result.was-added, .exercise-picker .picker-choice.was-added { border-color: var(--acc-line); }
+.exercise-picker .picker-add-button .added-check { animation: picker-added .25s ease-out; }
+.exercise-picker .picker-catalogue { margin-top: 16px; }
+.exercise-picker .picker-catalogue > summary { list-style: none; display: flex; justify-content: space-between; align-items: center; min-height: 48px; padding: 8px 3px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--label-2); }
+.exercise-picker .picker-catalogue > summary::-webkit-details-marker { display: none; }
+.exercise-picker .picker-catalogue > summary .icn { height: 16px; width: 16px; }
+.exercise-picker .picker-catalogue[open] > summary { display: none; }
+.exercise-picker .picker-catalogue .list { gap: 8px; }
+.exercise-picker .picker-result .tag.acc { display: none; }
+.exercise-picker .ex-grid .picker-result { padding: 11px; }
+.exercise-picker .ex-grid .item.picker-result > .picker-add-button { position: static; width: 100%; height: auto; min-height: 44px; margin: 2px 0 0 !important; padding: 8px 10px !important; border-radius: 11px; background: var(--acc-soft); }
+.exercise-picker .ex-grid .picker-result .thumb { width: 100%; height: auto; }
+@keyframes picker-added { from { opacity: .3; transform: scale(.6); } to { opacity: 1; transform: scale(1); } }
+@media (max-width: 360px) {
+  .exercise-picker .picker-choice > .thumb, .exercise-picker .list .picker-result > .thumb { display: none; }
+  .exercise-picker .picker-quick-tabs button { padding-inline: 8px; font-size: 10px; }
+}

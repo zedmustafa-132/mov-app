@@ -1626,6 +1626,7 @@ export const useStore = create((set, get) => {
     // `adopt` (a sign-in, a pairing — { alwaysAsk } for a device link): adoptProfile follows and
     // decides what becomes of this copy; until it has, nothing is pulled or pushed (ADOPT_KEY).
     setUser(u, { adopt } = {}) {
+      let adoptNutrition = false
       if (u) {
         // The local copy belongs to whoever last signed in here. When a session expires or is
         // revoked elsewhere, boot() only drops the user and the data stays; a different profile
@@ -1637,6 +1638,7 @@ export const useStore = create((set, get) => {
         const owner = localStorage.getItem('gym_owner')
         rejoined = owner === u.id
         const other = !!owner && owner !== u.id
+        adoptNutrition = !adopt && !other && !owner
         // The hold goes on before anything else can run: a poll, a resume, a debounced push.
         if (adopt) {
           adoptHold = true
@@ -1693,6 +1695,7 @@ export const useStore = create((set, get) => {
       } else { rejoined = false; adoptHold = false; localStorage.removeItem('gym_user') }
       set({ user: u })
       setSync({ held: adoptHold })
+      if (typeof window?.dispatchEvent === 'function' && typeof CustomEvent === 'function') window.dispatchEvent(new CustomEvent('mov:nutrition-account', { detail: { id: u?.id || null, paused: adoptHold, adoptLocal: adoptNutrition } }))
     },
 
     // One PUT at a time: a push asked for while one is in flight runs after it (once, however
@@ -1845,7 +1848,7 @@ export const useStore = create((set, get) => {
       // stays held, and the next check or "Sync now" runs it again; a bare call has nothing to
       // hold for and lets go.
       adopting = runAdopt(ask, opts)
-        .then(r => { claimSaved(); return r })
+        .then(r => { claimSaved(); window.dispatchEvent(new CustomEvent('mov:nutrition-adopt', { detail: { id: get().user?.id, added: !!r?.added } })); return r })
         .catch(e => { if (!adoptOwed()) releaseAdopt(); throw e })
         .finally(() => { adopting = null })
       return adopting

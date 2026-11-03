@@ -3,6 +3,7 @@
 
 import { getTitleForLevel } from './titles.js'
 import { getFormForLevel } from './forms.js'
+import { getActiveTargets } from '../targets.js'
 
 /**
  * XP required to advance from level n to level n+1: round(100 * n^1.5)
@@ -162,10 +163,8 @@ export function calculateDailyXp({
  */
 export function calculateTotalUserXp(S = {}, nutritionDays = {}) {
   let totalXp = 0
-  const targets = S.targets || {}
-  const targetCal = targets.dailyCalories || 2000
-  const targetProt = targets.proteinGrams || 150
-  const targetWater = targets.waterMl || 3000
+  // Use the same target precedence as the diary and home cards, including legacy profiles.
+  const { dailyCalories: targetCal, proteinGrams: targetProt, waterMl: targetWater } = getActiveTargets(S)
 
   // 1. Workouts by day
   const workoutsByDay = {}

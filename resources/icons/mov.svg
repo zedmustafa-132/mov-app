@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 512 512">
+  <!-- MOV's orange M badge, inset inside the maskable-icon safe area. -->
+  <rect width="512" height="512" fill="#11100f"/>
+  <polygon fill="#ff8a3d" points="200,94 312,94 418,200 418,312 312,418 200,418 94,312 94,200"/>
+  <polygon fill="#20120c" points="155,323 155,189 211,189 256,250 301,189 357,189 357,323 301,323 301,267 256,323 211,267 211,323"/>
+  <polygon fill="#ffad77" points="200,94 312,94 351,133 183,133 133,183 133,161"/>
+</svg>

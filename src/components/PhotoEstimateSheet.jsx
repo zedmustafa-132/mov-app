@@ -136,14 +136,14 @@ export function PhotoEstimateSheet({ meal = 'lunch', date, close }) {
       {/* Safety Notice / Disclaimer */}
       <div style={{
         padding: '8px 12px',
-        background: 'color-mix(in srgb,var(--teal) 12%,transparent)',
-        color: 'var(--teal)',
+        background: 'var(--surface-2)',
+        color: 'var(--label-2)',
         borderRadius: 'var(--r-sm)',
         fontSize: 13,
         lineHeight: 1.4
       }}>
         <Icon name="sparkles" style={{ verticalAlign: 'middle', marginInlineEnd: 6 }} />
-        {t('AI Nutrition Estimation (Beta). You will review and confirm all portion sizes before saving to your diary.')}
+        {t('Photo preview: this feature currently uses sample estimates, not image recognition. Review every food and portion before saving.')}
       </div>
 
       {/* Before analysis: Upload and preview */}

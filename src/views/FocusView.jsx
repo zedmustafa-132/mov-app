@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '../store/useStore.js'
-import { exOr } from '../lib/exercises.js'
+import { exOr, isAssisted } from '../lib/exercises.js'
 import { clampIncline, hasIncline, inclineFits, INCLINE_MAX, INCLINE_STEP } from '../lib/incline.js'
 import { exerciseNameClass, exerciseNameFor, t } from '../lib/i18n.js'
 import { fmtDate, fmtNum, fmtPlate } from '../lib/format.js'
@@ -21,6 +21,7 @@ import { ownedWeightsFor, stepOwned } from '../lib/dumbbells.js'
 import Icon from '../components/Icon.jsx'
 import { Button, Stepper } from '../components/ui.jsx'
 import './FocusView.css'
+import BeginnerExerciseGuide, { beginnerExerciseName } from '../components/BeginnerExerciseGuide.jsx'
 
 const firstIncomplete = entry => {
   const index = entry.sets.findIndex(set => !set.done)
@@ -130,6 +131,10 @@ export default function FocusView({
   const locked = !set.done && setIdx > firstOpenSet
   const readOnly = set.done || locked
   const mode = modeOf({ ...(entry.target || {}), id: entry.id })
+  const guided = S.active.guided === true && !S.active.editingWorkoutId
+  const bodyweight = guided && mode === 'reps' && ex.eq === 'body weight'
+  const needsReps = guided && mode === 'reps' && !isSideSet(set) && !(Number(set.r) > 0)
+  const needsWeight = guided && mode === 'reps' && !isSideSet(set) && ex.eq !== 'body weight' && !isAssisted(ex) && !(Number(set.w) > 0)
   const effort = effortOf(S)
   const effortField = EFFORT[effort]?.f
   const effortValue = effortField ? set[effortField] ?? null : null
@@ -251,13 +256,14 @@ export default function FocusView({
       { icon: 'arrowDown', label: t('Add drop set'), onClick: () => onMutateSet(setIdx, row => addDropTo(row, entry.target)) },
       { icon: 'bolt', label: t('Add burst'), onClick: () => onMutateSet(setIdx, row => addBurstTo(row, entry.target?.intensifier?.type === 'restpause' ? entry.target.intensifier.restSec : (S.restPauseSec || 15))) },
       !isWarmupRow(set) && mode !== 'cardio' && { icon: 'gauge', label: t('Taken to failure'), sub: t('Nothing left in the tank'), on: isFailureSet(set), onClick: () => onMutateSet(setIdx, toggleFailure) },
+      guided && mode === 'reps' && effortField && { icon: 'gauge', label: t('How hard it felt'), sub: effortValue == null ? t('Not rated yet') : t(EFFORT[effort].hd) + ' ' + fmtNum(effortValue), onClick: openEffort },
       // Cardio rates in RPE from here, as in the list's set menu (Workout.jsx): no column to spare.
       !isWarmupRow(set) && mode === 'cardio' && { icon: 'gauge', label: t('How hard it felt'), sub: set.rpe != null ? t(EFFORT.rpe.hd) + ' ' + fmtNum(set.rpe) : t('Not rated yet'), onClick: () => effortPickerSheet('rpe', set.rpe ?? null, value => onField(setIdx, 'rpe', value), { cardio: true }) },
       { icon: 'trash', label: t('Delete set'), danger: true, disabled: entry.sets.length <= 1, onClick: () => onRemoveSetAt(setIdx) },
     ],
   })
 
-  return <div className="focus-view" data-testid="focus-view">
+  return <div className={'focus-view' + (guided ? ' guided-workout' : '')} data-testid="focus-view">
     <div className="focus-card">
       {unit.length > 1 && <div className="focus-superset-inline">
         <Icon name="reset" />
@@ -270,12 +276,14 @@ export default function FocusView({
         </div>
       </div>}
       <header className="focus-card-header">
-        <h2>{exerciseNameFor(ex)}</h2>
+        <h2>{guided ? beginnerExerciseName(ex) : exerciseNameFor(ex)}</h2>
         <button className="iconbtn" aria-label={t('Details')} onClick={() => exerciseDetailSheet(ex)}><Icon name="info" /></button>
-        {isWarmupRow(set) && <span className="focus-warmup" aria-label={t('Warm-up')}>🔥</span>}
+        {isWarmupRow(set) && <span className="focus-warmup" aria-label={t('Warm-up')}><Icon name="flame" size={14} /></span>}
         {isFailureSet(set) && <span className="focus-failure" role="img" aria-label={t('Taken to failure')}>{t('F')}</span>}
         <button className="iconbtn" aria-label={t('More')} onClick={openExerciseMenu}><Icon name="more" /></button>
       </header>
+
+      {guided && <BeginnerExerciseGuide ex={ex} />}
 
       <div className="focus-context">
         <div className="focus-tags">
@@ -290,11 +298,13 @@ export default function FocusView({
         {last && <div className="focus-last">{t('Last time')} · {fmtDate(last.d)}</div>}
         {guidance && <button className="focus-guidance" onClick={onProgressionSettings}><Icon name="lightbulb" />{t(guidance.policyLabel)}</button>}
       </div>
-      <Prescription entry={entry} setIdx={setIdx} unit={S.unit} fallbackRest={S.restSec}>
+      {guided && <div className="guided-set-heading"><span>{t('Set {0} of {1}', setIdx + 1, entry.sets.length)}</span><b>{mode === 'reps' ? t('Do {0} repetitions', set.r || entry.target?.reps || 8) : t('Go at your own pace')}</b></div>}
+      {guided && entry.noProg === true && <span className="focus-badge warning"><Icon name="pause" />{t('Not counted for progression')}{onNoProg && <button type="button" className="focus-badge-action" onClick={() => onNoProg(false)}>{t('Undo')}</button>}</span>}
+      {!guided && <Prescription entry={entry} setIdx={setIdx} unit={S.unit} fallbackRest={S.restSec}>
         <PlanBadge entry={entry} mode={mode} />
         <PlateBadge S={S} entry={entry} set={set} />
         {entry.noProg === true && <span className="focus-badge warning"><Icon name="pause" />{t('Not counted for progression')}{onNoProg && <button type="button" className="focus-badge-action" onClick={() => onNoProg(false)}>{t('Undo')}</button>}</span>}
-      </Prescription>
+      </Prescription>}
       {locked && <p className="focus-lock-note" role="status">{t('Complete set {0} to edit this one.', firstOpenSet + 1)}</p>}
 
       <div data-testid="focus-set" className={(set.done ? 'complete ' : '') + (locked ? 'locked' : '')}>
@@ -310,13 +320,14 @@ export default function FocusView({
             {(inclineFits(ex) || entry.sets.some(hasIncline)) && <Stepper label={t('Incline (%)')} ariaLabel="incline" value={set.incline || 0} step={INCLINE_STEP} max={INCLINE_MAX} disabled={readOnly}
               onChange={value => onField(setIdx, 'incline', clampIncline(value))} />}
           </> : <>
-            <Stepper label={t('Load ({0})', S.unit)} ariaLabel="load" value={set.w || 0} step={loadStep} onStep={stepLoad} disabled={readOnly}
-              onChange={value => onField(setIdx, 'w', value)} />
+            {bodyweight ? <details className="guided-added-weight"><summary>{set.w > 0 ? t('Added weight: {0} {1}', fmtNum(set.w), S.unit) : t('Add weight (optional)')}<Icon name="chevronDown" /></summary><Stepper label={t('Added weight ({0})', S.unit)} ariaLabel="load" value={set.w || 0} step={loadStep} onStep={stepLoad} disabled={readOnly} onChange={value => onField(setIdx, 'w', value)} /></details>
+              : <Stepper label={guided ? t('Weight ({0})', S.unit) : t('Load ({0})', S.unit)} ariaLabel="load" value={set.w || 0} step={loadStep} onStep={stepLoad} disabled={readOnly}
+                onChange={value => onField(setIdx, 'w', value)} />}
           {mode === 'time' ? <div className="focus-timed">
             <strong>{t('{0}s hold', set.sec || entry.target?.sec || 45)}</strong>
             <Button icon="play" aria-label={t('Start set')} disabled={readOnly || busy}
               onClick={() => onStartTimed(setIdx, onProgress)}>{t('Start')}</Button>
-          </div> : <Stepper label={t('Reps')} ariaLabel="reps" value={set.r || 0} step={1} decimal={false} disabled={readOnly}
+          </div> : <Stepper label={guided ? t('Repetitions') : t('Reps')} ariaLabel="reps" value={set.r || 0} step={1} decimal={false} disabled={readOnly}
             onChange={value => onField(setIdx, 'r', value)} />}</>}
         </>}
         <div className="focus-extras">
@@ -337,15 +348,16 @@ export default function FocusView({
             <span className="dim small">{burst.restSec}s</span>
           </div>)}
         </div>
-        {mode === 'reps' && effortField && <button className={'effcell focus-effort' + (effortValue == null ? ' is-empty' : '')}
+        {mode === 'reps' && effortField && !guided && <button className={'effcell focus-effort' + (effortValue == null ? ' is-empty' : '')}
           style={effortTint ? { color: effortTint, borderColor: effortTint, background: `color-mix(in srgb, ${effortTint} 20%, var(--surface-2))` } : undefined}
           aria-label={t(EFFORT[effort].hd)} disabled={readOnly} onClick={openEffort}>{effortValue == null ? t(EFFORT[effort].hd) : fmtNum(effortValue)}</button>}
       </div>
-      <Button variant="primary" icon="check" aria-label={t('Complete set')} onClick={complete}>{set.done ? t('Completed') : t('Complete')}</Button>
+      {guided && <p className="guided-log-hint" role={needsReps || needsWeight ? 'status' : undefined}>{needsReps ? t('Enter the repetitions you completed.') : needsWeight ? t('Enter the weight you used before logging this set.') : t('One repetition = one complete movement. Log what you actually did.')}</p>}
+      <Button variant="primary" icon="check" aria-label={guided ? set.done ? t('Undo set') : t('Log set') : t('Complete set')} disabled={guided && (locked || busy || (!set.done && (needsReps || needsWeight)))} onClick={complete}>{guided ? set.done ? t('Undo set') : t('Log set') : set.done ? t('Completed') : t('Complete')}</Button>
       <div className="focus-secondary">
-        <button className="focus-skip" aria-label={t('Skip set')} disabled={setIdx >= entry.sets.length - 1} onClick={() => selectSet(setIdx + 1)}>
+        {guided ? <button className="focus-skip" aria-label={t('Change exercise')} disabled={busy} onClick={onSwap}><Icon name="swap" />{t('Change exercise')}</button> : <button className="focus-skip" aria-label={t('Skip set')} disabled={setIdx >= entry.sets.length - 1} onClick={() => selectSet(setIdx + 1)}>
           <Icon name="play" />{t('Skip')}
-        </button>
+        </button>}
         <button className="iconbtn" aria-label={t('Set menu')} onClick={openSetMenu}><Icon name="more" /></button>
       </div>
     </div>

@@ -59,7 +59,8 @@ describe('Login: Lost access?', () => {
   it('sits under the code button where passkeys work, and opens the steps', () => {
     const page = mount(<Login />)
     const all = [...page.querySelectorAll('button')].map(b => b.textContent.trim())
-    expect(all.indexOf('Lost access?')).toBe(all.indexOf('Use a code from your other device') + 1)
+    expect(all.indexOf('Lost access?')).toBeGreaterThan(all.indexOf('Create profile'))
+    expect(button(page, 'Lost access?').closest('details').querySelector('summary').textContent).toBe('More sign-in options')
     act(() => button(page, 'Lost access?').click())
     expect(mocks.sheets).toHaveLength(1)
   })

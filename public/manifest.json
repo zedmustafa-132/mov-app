@@ -1,13 +1,13 @@
 {
-  "name": "NXT FORM",
-  "short_name": "NXT FORM",
+  "name": "MOV",
+  "short_name": "MOV",
   "description": "Gamified Fitness & Calorie Coach",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0c0e12",
-  "theme_color": "#0c0e12",
+  "background_color": "#11100f",
+  "theme_color": "#11100f",
   "icons": [
     { "src": "icon-180.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }

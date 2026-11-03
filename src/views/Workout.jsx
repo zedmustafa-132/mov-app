@@ -27,7 +27,8 @@ import { workoutSettingsSheet } from '../components/WorkoutSettingsSheet.jsx'
 import { SessionMapButton } from '../components/SessionMuscles.jsx'
 import { durationSheet } from '../components/DurationWheel.jsx'
 import { REST_MAX, fmtRest, restWheelValue } from '../lib/duration.js'
-import { startFlow, exercisePicker, exConfigSheet, exerciseDetailSheet, finishWorkout, exitWorkoutEdit, workoutCompleteSheet, confirmSheet, exerciseNoteSheet, sessionNoteSheet, renameWorkoutSheet, swapActiveWorkoutExercise, barWeightSheet, menuSheet, effortPickerSheet, exerciseHistorySheet, addRoutineToSessionSheet, finishWorkoutSheet, finishWorkoutNow, swapActiveWorkoutToBackup } from '../sheets.jsx'
+import { startFlow, starterPlanSheet, exercisePicker, exConfigSheet, exerciseDetailSheet, finishWorkout, exitWorkoutEdit, workoutCompleteSheet, confirmSheet, exerciseNoteSheet, sessionNoteSheet, renameWorkoutSheet, swapActiveWorkoutExercise, barWeightSheet, menuSheet, effortPickerSheet, exerciseHistorySheet, addRoutineToSessionSheet, finishWorkoutSheet, finishWorkoutNow, swapActiveWorkoutToBackup, quickExerciseSheet } from '../sheets.jsx'
+import '../training-flow.css'
 import { afterScrollRestore, scrollRestorePending } from '../components/Modals.jsx'
 import { effortColor } from '../lib/effort.js'
 import Elapsed from '../components/Elapsed.jsx'
@@ -48,7 +49,11 @@ import { canMoveActiveWorkoutUnit, moveActiveWorkoutUnit, canMoveActiveWorkoutEn
 import { nextOpenSet, workoutKeyAction } from '../lib/workout-keys.js'
 import { MUSCLE_NAME } from '../lib/muscles.js'
 import FocusView from './FocusView.jsx'
+import { firstWorkoutSheet } from '../components/FirstWorkoutSheet.jsx'
+import { needsFirstWorkout } from '../lib/first-workout.js'
+import { exerciseWeightUnitSheet } from '../components/UnitChoice.jsx'
 import { SeasonDeco } from '../components/Seasonal.jsx'
+import { workoutArtStyle } from '../lib/workout-art.js'
 import { entryDbLoad, bellsIn, ownedWeightsFor, stepOwned } from '../lib/dumbbells.js'
 
 // How long after a key starts a hold the same key is not yet its "Done" (#133). A USB button
@@ -63,30 +68,36 @@ function StartChooser() {
   const todayIds = effectiveRoutineIds(S, todayISO())
   const todayRoutines = effectiveRoutines(S, todayISO())
   const todayName = todayRoutines.map(r => r.name).join(' + ')
-  const todayOvr = S.dayPlan[todayISO()] !== undefined && pinState(S, S.dayPlan[todayISO()]) !== 'done' // a fulfilled pin is no override
-  const idSet = new Set(todayIds)
-  const others = S.routines.filter(r => !idSet.has(r.id))
-  return <div className="narrow">
-    <div className="hdr"><div><h1>{t('Start workout')}</h1><div className="sub">{t(DAYN[new Date().getDay()])} · {todayRoutines.length ? t('today is {0}', todayName) : t('rest day, but no one’s stopping you')}</div></div></div>
-    {todayRoutines.length > 0 && <div className="card" style={{ borderColor: 'var(--acc)' }}>
-      <h2 className="accent">{t("Today's plan")}{todayOvr ? ' · ' + t('rescheduled') : ''}</h2>
-      <div className="row between" style={{ marginBottom: 12 }}>
-        <div><div className="big">{todayName}</div><div className="muted small">{exCount(todayRoutines.reduce((n, r) => n + r.ex.length, 0))}</div></div>
-        <span className="lrow-i" style={{ width: 38, height: 38, borderRadius: 9, fontSize: 22 }}><Icon name={glyphOf(todayRoutines[0].emoji)} /></span>
-      </div>
-      <Button variant="primary" icon="play" onClick={() => startFlow(todayIds)}>{t('Start {0}', todayName)}</Button>
-    </div>}
-    {others.length > 0 && <><h4 className="sec">{t('Other routines')}</h4>
-      <div className="list">{others.map(r => <div key={r.id} className="item" onClick={() => startFlow([r.id])}>
-        <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
-        <div className="grow"><div className="tt">{r.name}</div><div className="ss">{exCount(r.ex.length)}</div></div>
-        <span className="tag acc">{t('Start')}</span></div>)}</div></>}
-    <div style={{ height: 14 }} />
-    <Button icon="shuffle" onClick={() => startFlow([])}>{t('Freestyle workout (pick as you go)')}</Button>
-    {!S.routines.length && <><div style={{ height: 10 }} /><Button variant="primary" onClick={() => nav('/plan')}>{t('Build a plan first')}</Button></>}
+  const hasTodayWorkout = todayRoutines.some(r => r.ex.length > 0)
+  const hasSavedWorkouts = S.routines.some(r => r.ex.length > 0)
+  const firstWorkout = needsFirstWorkout(S)
+  return <div className="narrow s-workouts">
+    <header className="hdr"><div><h1>{t('Train')}</h1><div className="sub">{t('A good workout starts with a simple plan.')}</div></div>
+      <button className="ib" onClick={() => nav('/library')} aria-label={t('Exercise Library')}><Icon name="magnifier" /></button>
+    </header>
+    {(hasTodayWorkout || !hasSavedWorkouts) && <section className="training-start-card" style={workoutArtStyle(todayRoutines)}>
+      <span className="training-eyebrow"><Icon name="questTraining" />{hasTodayWorkout ? t('TODAY’S WORKOUT') : t('READY WHEN YOU ARE')}</span>
+      <h2>{hasTodayWorkout ? todayName : t('Your workout. Your pace.')}</h2>
+      <p>{hasTodayWorkout ? t('{0} exercises, ready to follow.', todayRoutines.reduce((n, r) => n + r.ex.length, 0)) : firstWorkout ? t('Three simple moves. No gym experience needed.') : t('Choose a few exercises and log each set as you go. No plan needed.')}</p>
+      <Button variant="primary" icon="play" onClick={() => hasTodayWorkout ? startFlow(todayIds) : firstWorkout ? firstWorkoutSheet() : startFlow([])}>{hasTodayWorkout ? t('Start today’s workout') : t('Start workout')}</Button>
+      {hasTodayWorkout && <Button variant="secondary" icon="plus" onClick={() => startFlow([])}>{t('Start a quick workout instead')}</Button>}
+    </section>}
+    {S.routines.length > 0 && <section className="training-routines">
+      <div className="row between" style={{ marginBottom: 14 }}><h2 style={{ fontSize: 18 }}>{t('Your routines')}</h2><Button size="sm" variant="ghost" onClick={() => nav('/plan')}>{t('Manage')}</Button></div>
+      <div className="list routine-card-list">{S.routines.map(r => <button key={r.id} className="rw routine-choice" onClick={() => r.ex.length ? startFlow([r.id]) : nav('/plan/r/' + r.id)}>
+        <span className="routine-choice-icon routine-cover" style={workoutArtStyle(r, true)} aria-hidden="true"><Icon name={glyphOf(r.emoji)} /></span>
+        <span><b>{r.name}</b><small>{r.ex.length ? exCount(r.ex.length) : t('Add exercises to get started')}</small></span><Icon name={r.ex.length ? 'play' : 'plus'} />
+      </button>)}</div>
+      {!hasTodayWorkout && <p className="training-plan-hint">{t('Tap a saved routine to start it, or edit your plan to make changes.')}</p>}
+      {!hasTodayWorkout && hasSavedWorkouts && <Button variant="secondary" icon="plus" onClick={() => startFlow([])}>{t('Start a quick workout')}</Button>}
+    </section>}
+    <Button variant="ghost" icon="plus" onClick={() => quickExerciseSheet()}>{t('Log an exercise')}</Button>
+    <div className="training-plan-links">
+      <button onClick={starterPlanSheet}><span className="training-link-icon"><Icon name="clipboard" /></span><span><b>{t('Choose a ready-made plan')}</b><small>{t('A starting point you can make your own')}</small></span><Icon name="chevronRight" /></button>
+      <button onClick={() => nav('/plan')}><span className="training-link-icon"><Icon name="calendar" /></span><span><b>{t('My workout plan')}</b><small>{t('Create routines and choose training days')}</small></span><Icon name="chevronRight" /></button>
+    </div>
   </div>
 }
-
 
 // A set-row column's number as it is shown. Most columns show what is stored; one with a `view`
 // (cardio speed, stored in km/h) converts it for the screen.
@@ -106,6 +117,17 @@ const RTL_LETTER = /[֐-ࣿיִ-﷿ﹰ-﻿]/
 // The pause between the left and the right side of one timed per-side set (owner's call): long
 // enough to turn over, far shorter than the rest the set earns once both sides are held.
 const SWITCH_SIDES_SEC = 10
+
+function WorkoutTargetDetails({ plan, onOpen }) {
+  const guidance = progressionGuidance(plan)
+  if (!guidance || !onOpen) return null
+  const explanation = <button type="button" className={'progline' + (plan.kind === 'deload' ? ' warn' : '')}
+    aria-label={t('Open exercise settings')} onClick={onOpen}>
+    <Icon name={plan.kind === 'up' ? 'arrowUp' : plan.kind === 'deload' ? 'arrowDown' : 'lightbulb'} />
+    <span><strong>{t(guidance.policyLabel)}</strong> · {t(...guidance.why)}</span>
+  </button>
+  return plan.kind === 'deload' ? explanation : <details className="workout-target-details"><summary>{t('About today’s targets')}<Icon name="chevronDown" /></summary>{explanation}</details>
+}
 
 function ExerciseBlock({ entryIdx, compact, dense, editing, onToggle, onToggleSide, onField, onAddSet, onRemoveSet, onAddWarmup, onRemoveSetAt, onCopySetAt, onStartTimed, onPairPrev, onPairNext, onSetRowRef, onProgressionSettings, onRest, onNoProg, routineUpdate, onSwap, onSwapBackup, onMoveUp, onMoveDown, canMoveUp, canMoveDown, onRemoveExercise, busy }) {
   const S = useStore(s => s.S)
@@ -345,7 +367,7 @@ function ExerciseBlock({ entryIdx, compact, dense, editing, onToggle, onToggleSi
   const cell = (s, i, col, cls) => (
     <div className={'stp ' + cls + (wc.steppers ? '' : ' plain')}>
       {wc.steppers && <button aria-label={t('Decrease')} onClick={() => bump(s, i, col, -1)}><Icon name="minus" /></button>}
-      <span className="val"><NumberField decimal={col.dec} nullable={col.opt} value={viewOf(col, s[col.f]) ?? ''}
+      <span className="val"><NumberField decimal={col.dec} nullable={col.opt} value={viewOf(col, s[col.f]) ?? ''} aria-label={t('{0}, set {1}', col.hd, setNumOf(s, i))}
         onChange={v => onField(i, col.f, col.store ? col.store(v) : v)} /></span>
       {wc.steppers && <button aria-label={t('Increase')} onClick={() => bump(s, i, col, 1)}><Icon name="plus" /></button>}
     </div>
@@ -565,7 +587,7 @@ function ExerciseBlock({ entryIdx, compact, dense, editing, onToggle, onToggleSi
   const sideCell = (sd, i, side, col, cls) => (
     <div className={'stp ' + cls + (wc.steppers ? '' : ' plain')}>
       {wc.steppers && <button aria-label={t('Decrease')} onClick={() => sideBump(i, side, col, -1)}><Icon name="minus" /></button>}
-      <span className="val"><NumberField decimal={col.dec} value={sd[col.f] ?? ''}
+      <span className="val"><NumberField decimal={col.dec} value={sd[col.f] ?? ''} aria-label={t('{0}, set {1} ({2})', col.hd, setNumOf(entry.sets[i], i), side === 'L' ? t('Left') : t('Right'))}
         onChange={v => setSide(i, side, col.f, v)} /></span>
       {wc.steppers && <button aria-label={t('Increase')} onClick={() => sideBump(i, side, col, 1)}><Icon name="plus" /></button>}
     </div>
@@ -733,11 +755,7 @@ function ExerciseBlock({ entryIdx, compact, dense, editing, onToggle, onToggleSi
     {entry.note && <div className="exnote">{entry.note}</div>}
     {planLine}
     {refLine}
-    {guidance && onProgressionSettings && <button type="button" className={'progline' + (plan.kind === 'deload' ? ' warn' : '')}
-      aria-label={t('Open exercise settings')} onClick={onProgressionSettings}>
-      <Icon name={plan.kind === 'up' ? 'arrowUp' : plan.kind === 'deload' ? 'arrowDown' : 'lightbulb'} />
-      <span><strong>{t(guidance.policyLabel)}</strong> · {t(...guidance.why)}</span>
-    </button>}
+    <WorkoutTargetDetails plan={plan} onOpen={onProgressionSettings} />
     </>}
     <div className="card" style={{ marginTop: 10, marginBottom: 0 }}>
       {/* the header carries the same eff3/timed sizing as the rows, or the labels drift off their
@@ -1512,7 +1530,7 @@ function ActiveWorkout() {
     // Ticked here rather than row by row: without this, unticking and reticking one of them
     // would count as new progress and replay the flow a first tick runs.
     if (fresh) progressHighWater.current = fresh.entries.map(e => e.sets.filter(s => s.done).length)
-    workoutCompleteSheet()
+    workoutCompleteSheet({ onAddExercise: () => addExercise() })
   }
   // Adds an exercise after the current unit: the button under the session and the ⋯ menu's Add.
   const addExercise = () => exercisePicker((ex, quick) => {
@@ -1810,7 +1828,7 @@ function ActiveWorkout() {
       }
     }, true)
     if (editing) return
-    if (workoutDone) workoutCompleteSheet()
+    if (workoutDone) workoutCompleteSheet({ onAddExercise: () => addExercise() })
     else if (exJustDone && cardioEntry) useUI.getState().toast(t('Cardio logged'))
     else if (exJustDone && m === 'time') useUI.getState().toast(t('Hold logged'))
 
@@ -2160,10 +2178,10 @@ function ActiveWorkout() {
       {editing
         ? <button className="iconbtn" aria-label={t('Close editor')} title={t('Close editor')} onClick={() => exitWorkoutEdit()}><Icon name="xmark" /></button>
         : <button className="iconbtn" aria-label={t('Minimize')} title={t('Minimize')} onClick={() => nav('/home')}><Icon name="chevronDown" /></button>}
-      <div className="whdr-mid"><div className="whdr-name">{A.name}</div><div className="sub">{(A.backfill || editing) ? fmtDate(A.d, true) : <Elapsed start={A.start} />} · {t('{0} sets', done + '/' + total)}</div></div>
+      <div className="whdr-mid workout-has-unit"><div className="whdr-name">{A.name}</div><div className="sub">{(A.backfill || editing) ? fmtDate(A.d, true) : <Elapsed start={A.start} />} · {t('{0} sets', done + '/' + total)}</div><button type="button" className="workout-unit-button" aria-label={t('Exercise weight unit: {0}', S.unit)} onClick={() => exerciseWeightUnitSheet()}>{S.unit}<Icon name="chevronDown" /></button></div>
       {!chipRow && sessionMap}
       <button className="iconbtn" aria-label={t('Workout options')} title={t('Workout options')} onClick={openViewMenu}><Icon name="more" /></button>
-      <button className="btn primary pill whdr-finish" aria-label={editing ? t('Save changes') : undefined}
+      <button className={'btn ' + (A.entries.length ? 'primary' : 'secondary') + ' pill whdr-finish'} aria-label={editing ? t('Save changes') : undefined}
         onClick={() => (editing ? finishWorkout() : finishWorkoutSheet({ onDiscard: discardWorkout }))}>{editing ? t('Save') : t('Finish')}</button>
     </div>
     {/* The volume so far rides at the end of the progress bar (#774): one line that never wraps,
@@ -2179,6 +2197,7 @@ function ActiveWorkout() {
     </div>
     {editing && <p className="muted small">{t('Editing a saved workout. Date and duration stay unchanged.')}</p>}
     {A.backfill && <div className="muted small" style={{ marginBottom: 8 }}>{t('Logging a past workout, so no rest timers.')}</div>}
+    {!editing && !A.backfill && !A.guided && S.workouts.length === 0 && A.entries.length > 0 && <div className="workout-first-help"><Icon name="checkCircle" /><span>{t('Enter what you did, then tap the checkmark to log each set. You can change the numbers before checking it off.')}</span></div>}
 
     {A.entries.length ? (listMode ? (
       <div className="workout-list" data-testid="workout-list" ref={listRef}>
@@ -2288,16 +2307,16 @@ function ActiveWorkout() {
         <ExerciseBlock entryIdx={cur} onPairPrev={onPairPrev} onPairNext={onPairNext} {...blockProps(cur)} />
       )}
       </SwipeCards>
-    </>) : <div className="empty"><div className="ico"><Icon name="shuffle" /></div>{t('Freestyle workout. Add your first exercise and off you go.')}</div>}
+    </>) : <div className="empty workout-session-empty workout-setup-card"><div className="workout-setup-icon"><Icon name="questTraining" /></div><h2>{t('Choose your first exercise')}</h2><p>{t('Search by name, or browse by muscle and equipment. Add a few exercises, then start logging your sets.')}</p><Button variant="primary" icon="plus" onClick={addExercise}>{t('Add exercise')}</Button>{S.routines.some(r => r.ex.length > 0) && <Button variant="ghost" icon="clipboard" onClick={addRoutineToSessionSheet}>{t('Use a saved routine')}</Button>}</div>}
 
     <div style={{ height: 12 }} />
-    {!listMode && <div className="row">
+    {!listMode && units.length > 1 && <div className="row">
       <Button icon="chevronLeft" disabled={unitIdx <= 0} onClick={() => navigateUnit(-1)}>{t('Prev')}</Button>
       <Button trailingIcon="chevronRight" disabled={unitIdx < 0 || unitIdx >= units.length - 1} onClick={() => navigateUnit(1)}>{t('Next')}</Button>
     </div>}
     {!listMode && <div style={{ height: 10 }} />}
     {wc.exerciseButtons && listMode && A.entries.length > 0 && <div className="muted small" style={{ marginBottom: 6 }}>{t('Move, swap and remove below act on the exercise marked {0}.', t('Current'))}</div>}
-    <Button onClick={addExercise} icon="plus">{t('Add exercise')}</Button>
+    {A.entries.length > 0 && <Button variant="secondary" onClick={addExercise} icon="plus">{t('Add exercise')}</Button>}
     {wc.exerciseButtons && A.entries.length > 0 && <>
       <div style={{ height: 6 }} />
       <div className="row">
@@ -2324,7 +2343,7 @@ function ActiveWorkout() {
         {A.note ? t('Edit session note') : t('Add session note')}
       </Button>
     </div>
-    {(() => {
+    {A.entries.length > 0 && (() => {
       const exDone = A.entries.filter(e => e.sets.length && e.sets.every(s => s.done)).length
       const allDone = A.entries.length > 0 && exDone === A.entries.length
       return <button className={allDone ? 'btn primary' : 'btn ghost dim'} onClick={finishWorkout}>

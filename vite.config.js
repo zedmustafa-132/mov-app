@@ -108,7 +108,11 @@ export default defineConfig({
     // The Coach's core (payload, validator, prompts, HTTP adapters) lives in ../api/coach/core
     // and is imported by the phone build. vite build and vitest already reach it; the dev
     // server needs to be told the workspace is wider than frontend/.
-    fs: { allow: ['..'] },
+    fs: {
+      allow: ['..'],
+      // Local API credentials must never be served by Vite's /@fs source endpoint.
+      deny: ['**/.env', '**/.env.*', '**/*.{crt,pem}', '**/.git/**', '**/.food.local.json']
+    },
     proxy: {
       '/api': { target: backend, changeOrigin: true, headers: { Origin: apiOrigin } },
       ...(media ? {

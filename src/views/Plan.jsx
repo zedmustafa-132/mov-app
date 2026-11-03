@@ -9,6 +9,7 @@ import {
   planHasRoutines, exportPlanFile, printWholePlan, importPlanFile,
 } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
+import { workoutArtStyle } from '../lib/workout-art.js'
 import { SeasonDeco } from '../components/Seasonal.jsx'
 import { Button, Row, Section, Segmented } from '../components/ui.jsx'
 import SwipeRow from '../components/SwipeRow.jsx'
@@ -18,6 +19,7 @@ import { workoutControls } from '../lib/workout-controls.js'
 import { tappable } from '../lib/use-sheet-keyboard.js'
 import { useListReorder, moved } from '../lib/use-list-reorder.js'
 import { glyphOf, DEFAULT_GLYPH } from '../lib/glyphs.js'
+import './plan-ux.css'
 import { DEMO } from '../lib/demo.js'
 import { MOBILE } from '../lib/mobile.js'
 import { coachAvailable } from '../lib/coach.js'
@@ -136,7 +138,7 @@ export default function Plan() {
   const coachMode = useStore(s => s.coachLocal?.mode)
   const user = useStore(s => s.user)
   const fileRef = useRef(null)
-  const [view, setViewState] = useState(readView)
+  const [view, setViewState] = useState(() => queueRecovery(S) ? 'schedule' : (S.routines.length || S.scheduleMode || S.rotation || S.queue) ? readView() : 'routines')
   const setView = v => {
     setViewState(v)
     try { localStorage.setItem(PLAN_VIEW_KEY, v) } catch { /* private mode: the view just isn't remembered */ }
@@ -164,6 +166,12 @@ export default function Plan() {
     })
   }
   const pickFile = ev => { const f = ev.target.files[0]; ev.target.value = ''; importPlanFile(f) }
+  const addRoutine = () => {
+    const routine = { id: uid(), name: t('New routine'), emoji: DEFAULT_GLYPH, ex: [] }
+    setView('routines')
+    update(s => { s.routines.push(routine) })
+    nav('/plan/r/' + routine.id)
+  }
 
   const mode = scheduleModeOf(S)
 
@@ -177,8 +185,12 @@ export default function Plan() {
       </div>
     </div>
     <input ref={fileRef} type="file" accept="application/json,.json" onChange={pickFile} hidden />
+    <section className={'plan-builder-actions' + (!S.routines.length ? ' is-empty' : '')} aria-label={t('Build your plan')}>
+      {!S.routines.length && <div className="plan-builder-intro"><span className="plan-builder-icon"><Icon name="clipboard" /></span><div><h2>{t('A plan that works for you.')}</h2><p>{t('Choose a starter plan, or build a routine with your own exercises.')}</p></div></div>}
+      <div className="plan-builder-buttons"><Button variant="primary" icon="plus" onClick={addRoutine}>{t('New routine')}</Button><Button variant="secondary" icon="clipboard" onClick={starterPlanSheet}>{t('Starter plans')}</Button></div>
+    </section>
     <Segmented className="plan-views" value={view} onChange={setView}
-      options={[{ value: 'schedule', label: t('Schedule') }, { value: 'routines', label: t('Routines') }]} />
+      options={[{ value: 'routines', label: t('Routines') }, { value: 'schedule', label: t('Schedule') }]} />
     {view === 'routines'
       ? <Routines S={S} update={update} nav={nav} />
       : <Schedule S={S} update={update} nav={nav} mode={mode} />}
@@ -311,7 +323,7 @@ function Schedule({ S, update, nav, mode }) {
 
     {!S.routines.length && <div className="empty plan-empty">
       <div className="ico"><Icon name="clipboard" /></div>{t('No routines yet.')}<br />{t('Make one, or grab the starter plan to get going.')}
-      <div style={{ marginTop: 12 }}><Button icon="clipboard" onClick={starterPlanSheet}>{t('Load starter plan')}</Button></div>
+      <div style={{ marginTop: 12 }}><Button variant="primary" icon="clipboard" onClick={starterPlanSheet}>{t('Load starter plan')}</Button></div>
     </div>}
 
     {/* A queue payload that arrived unusable: a fix-up, shown whichever way you train. Giving it
@@ -418,11 +430,6 @@ function Routines({ S, update, nav }) {
     s.routines.splice(to, 0, m)
   }))
 
-  const addRoutine = () => {
-    const r = { id: uid(), name: t('New routine'), emoji: DEFAULT_GLYPH, ex: [] }
-    update(s => { s.routines.push(r) })
-    nav('/plan/r/' + r.id)
-  }
   // The same delete as RoutineEdit's "Delete routine" button (lib/routines.js), with an Undo in
   // place of its confirm (v1.3.11): the swipe and the edit-mode minus both land here.
   const remove = r => deleteRoutineWithUndo(r.id)
@@ -448,24 +455,24 @@ function Routines({ S, update, nav }) {
 
   return <>
     <div className="row between plan-sec-h plan-routines-bar">
+      <div><h2>{t('Your routines')}</h2>{routines.length > 0 && <p>{t('Saved workouts you can start anytime.')}</p>}</div>
       {routines.length > 0
         ? <button className="plan-textbtn" aria-pressed={edit} onClick={() => setEdit(e => !e)}>{edit ? t('Done') : t('Edit')}</button>
         : <span />}
-      <Button size="sm" variant="tinted" icon="plus" onClick={addRoutine}>{t('New routine')}</Button>
     </div>
     {routines.length ? <>
       {edit
         ? <div className="list routine-list plan-routines is-editing" ref={reorder.listRef}>{routines.map((r, i) =>
           <div key={r.id} data-reorder-row className="item plan-routine" style={reorder.rowStyle(i)}>
             <button className="plan-minus" aria-label={t('Delete {0}', r.name)} title={t('Delete routine')} onClick={() => remove(r)}><Icon name="minus" /></button>
-            <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
+            <span className="lrow-i plan-routine-cover" style={workoutArtStyle(r, true)} aria-hidden="true"><Icon name={glyphOf(r.emoji)} /></span>
             <div className="grow"><div className="tt">{r.name}</div><div className="ss">{sub(r)}</div></div>
             {routines.length > 1 && <button className="plan-handle" aria-label={t('Move {0}', r.name)} title={t('Drag to reorder')}
               {...reorder.handle(i)}><Icon name="chevronsUpDown" /></button>}
           </div>)}</div>
         : <div className="list routine-list plan-routines">{routines.map(r => {
           const row = <div key={r.id} className="item plan-routine" {...tappable(() => nav('/plan/r/' + r.id))}>
-            <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
+            <span className="lrow-i plan-routine-cover" style={workoutArtStyle(r, true)} aria-hidden="true"><Icon name={glyphOf(r.emoji)} /></span>
             <div className="grow"><div className="tt">{r.name}</div><div className="ss">{sub(r)}</div></div>
             <MiniBodyMap routines={[r]} body={S.body} />
             <Icon name="chevronRight" className="chev" /></div>
@@ -480,8 +487,7 @@ function Routines({ S, update, nav }) {
         })}</div>}
       <p className="sect-f">{edit ? t('Drag to reorder. Tap the minus to delete.') : t('Tap a routine to edit it. Reorder and delete are behind Edit.')}</p>
     </> : <>
-      <div className="empty"><div className="ico"><Icon name="clipboard" /></div>{t('No routines yet.')}<br />{t('Make one, or grab the starter plan to get going.')}</div>
-      <Button icon="clipboard" onClick={starterPlanSheet}>{t('Load starter plan')}</Button>
+      <div className="empty plan-routine-empty"><div className="ico"><Icon name="dumbbell" /></div><h3>{t('No routines yet.')}</h3><p>{t('A routine is a saved workout. Add exercises first, then choose training days whenever you’re ready.')}</p></div>
     </>}
   </>
 }

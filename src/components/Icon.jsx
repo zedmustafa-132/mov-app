@@ -15,6 +15,13 @@ import { memo } from 'react'
 //   · geometry snapped to .5 so it lands on pixel edges at 24px
 
 const P = {
+  /* MOV game icons: paired solid and outlined geometry, on the same 24px grid. */
+  questTraining: <g transform="rotate(-35 12 12)"><rect x="5" y="5" width="4" height="14" rx="1.5" fill="currentColor" fillOpacity=".2" /><rect x="15" y="5" width="4" height="14" rx="1.5" fill="currentColor" fillOpacity=".2" /><path d="M9 12h6M2.5 9v6M21.5 9v6" /></g>,
+  questWater: <><path d="M12 3C9 7 5.5 10.5 5.5 15a6.5 6.5 0 0 0 13 0C18.5 10.5 15 7 12 3Z" fill="currentColor" fillOpacity=".16" /><path d="M6 15q3-3 6 0t6 0" /><path d="M9 9.5 8 12" opacity=".6" /></>,
+  questFuel: <><circle cx="12" cy="12" r="8.5" fill="currentColor" fillOpacity=".12" /><path d="m13 5-6 8h5l-1 6 6-8h-5Z" fill="currentColor" strokeWidth="1" /></>,
+  gameHome: <><path d="m12 3 8.5 6v10A1.5 1.5 0 0 1 19 20.5H5A1.5 1.5 0 0 1 3.5 19V9Z" fill="currentColor" fillOpacity=".15" /><path d="M9.5 20.5V14h5v6.5" /></>,
+  gameProgress: <><path d="M6 15V8h12v7M12 8V4" /><rect x="3" y="15" width="6" height="6" rx="1.5" fill="currentColor" fillOpacity=".2" /><rect x="15" y="15" width="6" height="6" rx="1.5" fill="currentColor" fillOpacity=".2" /><path d="m12 2 3 3-3 3-3-3Z" fill="currentColor" /></>,
+  gameMenu: <><rect x="3.5" y="3.5" width="6" height="6" rx="1.8" fill="currentColor" fillOpacity=".2" /><rect x="14.5" y="3.5" width="6" height="6" rx="1.8" /><rect x="3.5" y="14.5" width="6" height="6" rx="1.8" /><rect x="14.5" y="14.5" width="6" height="6" rx="1.8" fill="currentColor" fillOpacity=".2" /></>,
   /* ---- navigation ---- */
   house: <path d="M3.5 10.7 12 3.8l8.5 6.9M5.9 9.4V19a1.4 1.4 0 0 0 1.4 1.4h9.4A1.4 1.4 0 0 0 18.1 19V9.4" />,
   calendar: <><rect x="3.4" y="5.2" width="17.2" height="15.4" rx="3.2" /><path d="M8.2 3.4v3.4M15.8 3.4v3.4M3.4 10.2h17.2" /></>,
@@ -26,6 +33,8 @@ const P = {
 
   /* ---- training ---- */
   /* ---- nutrition & hydration ---- */
+  mic: <><rect x="8.5" y="3" width="7" height="12" rx="3.5" /><path d="M5.5 10.5v1a6.5 6.5 0 0 0 13 0v-1M12 18v3M8.5 21h7" /></>,
+  stop: <rect x="5.5" y="5.5" width="13" height="13" rx="3" fill="currentColor" stroke="none" />,
   utensils: <><path d="M6 4v5a2 2 0 0 0 2 2v9M10 4v5a2 2 0 0 1-2 2M8 4v7" /><path d="M16 4v16M16 4a3.5 3.5 0 0 1 3.5 3.5c0 2.2-1.8 4-3.5 4.5" /></>,
   drop: <path d="M12 3.6c3.8 4.6 6 8.2 6 11.4a6 6 0 0 1-12 0c0-3.2 2.2-6.8 6-11.4Z" />,
   barcode: <path d="M4 6v12M7 6v12M11 6v12M14 6v12M16 6v12M20 6v12" />,
@@ -92,6 +101,7 @@ const P = {
   bell: <><path d="M6.6 10.4a5.4 5.4 0 0 1 10.8 0c0 4 1.4 5.6 1.4 5.6H5.2s1.4-1.6 1.4-5.6Z" /><path d="M10.1 19.2a2.1 2.1 0 0 0 3.8 0" /></>,
   bellSlash: <><path d="M8.1 6.6a5.4 5.4 0 0 1 9.3 3.8c0 4 1.4 5.6 1.4 5.6H9.4M6.6 16H5.2s1.4-1.6 1.4-5.6v-.6" /><path d="M10.1 19.2a2.1 2.1 0 0 0 3.8 0M4 3.6l16 16.8" /></>,
   chevronRight: <path d="m9.6 5.6 6.6 6.4-6.6 6.4" />,
+  arrowRight: <path d="M4 12h16m-6-6 6 6-6 6" />,
   chevronLeft: <path d="m14.4 5.6-6.6 6.4 6.6 6.4" />,
   chevronDown: <path d="m5.6 9.4 6.4 6.2 6.4-6.2" />,
   chevronUp: <path d="m5.6 14.6 6.4-6.2 6.4 6.2" />,

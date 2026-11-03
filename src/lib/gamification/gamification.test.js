@@ -4,6 +4,7 @@ import {
   cumulativeXpForLevel,
   getLevelInfo,
   calculateDailyXp,
+  calculateTotalUserXp,
   calculateCharacterStats,
   getDailyQuests,
   evaluateBadges,
@@ -105,6 +106,35 @@ describe('Gamification: Daily XP Calculation', () => {
     })
     // 40 workout + (2 * 15 PR) + 5 weigh-in = 75 XP
     expect(res.totalXp).toBe(75)
+  })
+})
+
+describe('Gamification: Lifetime XP uses the displayed nutrition targets', () => {
+  it.each([
+    ['legacy dailyTargets', { dailyTargets: { calories: 2500, proteinG: 100, waterMl: 3500 } }],
+    ['latest target history', { targetHistory: [{ calories: 1800, proteinG: 130, waterMl: 2500 }, { calories: 2500, proteinG: 100, waterMl: 3500 }] }]
+  ])('respects %s for calorie, protein, and water milestones', (_, S) => {
+    const days = { '2026-10-31': { entries: [{ meal: 'lunch', nutrients: { calories: 2500, protein: 99 } }], waterMl: 3000 } }
+    // Meal + calories only; neither the higher water goal nor the protein goal is met yet.
+    expect(calculateTotalUserXp(S, days)).toBe(30)
+    days['2026-10-31'].waterMl = 3500
+    days['2026-10-31'].entries[0].nutrients.protein = 100
+    expect(calculateTotalUserXp(S, days)).toBe(55)
+  })
+
+  it('keeps explicit current targets ahead of history and legacy values', () => {
+    const S = {
+      targets: { dailyCalories: 2000, macros: { proteinG: 150 }, waterMl: 3000 },
+      dailyTargets: { calories: 2500, proteinG: 100, waterMl: 3500 },
+      targetHistory: [{ calories: 2800, proteinG: 170, waterMl: 4000 }]
+    }
+    const days = { '2026-10-31': { entries: [{ meal: 'lunch', nutrients: { calories: 2000, protein: 150 } }], waterMl: 3000 } }
+    expect(calculateTotalUserXp(S, days)).toBe(55)
+  })
+
+  it('retains the default nutrition milestones when a profile has no targets', () => {
+    const days = { '2026-10-31': { entries: [{ meal: 'lunch', nutrients: { calories: 2000, protein: 150 } }], waterMl: 3000 } }
+    expect(calculateTotalUserXp({}, days)).toBe(55)
   })
 })
 

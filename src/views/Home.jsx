@@ -4,7 +4,7 @@ import { useStore } from '../store/useStore.js'
 import { effectiveRoutines, effectiveRoutineIds, nextTrainingDay, streakWeeks, lastBW, setsDoneActive } from '../lib/history.js'
 import { fmtNum, fmtDate, todayISO, isoOf, weekStartOf, weekDayOffset, DAYS, DAYN } from '../lib/format.js'
 import { t, tn, dateLocale } from '../lib/i18n.js'
-import { bwSheet, goalSheet, dayOverrideSheet, calendarSheet, startFlow, starterPlanSheet, bwDeltaColor, weighInsSheet } from '../sheets.jsx'
+import { bwSheet, goalSheet, dayOverrideSheet, calendarSheet, startFlow, starterPlanSheet, bwDeltaColor, weighInsSheet, workoutDetailSheet, quickExerciseSheet } from '../sheets.jsx'
 import LineChart from '../components/LineChart.jsx'
 import Icon from '../components/Icon.jsx'
 import QueueRow from '../components/QueueRow.jsx'
@@ -12,7 +12,7 @@ import MiniBodyMap from '../components/MiniBodyMap.jsx'
 import { queueOf, queueView, weekTally, pinState } from '../lib/queue.js'
 import { scheduleModeOf } from '../lib/rotation.js'
 import { useConnectionTrouble } from '../components/SyncBanner.jsx'
-import { Button } from '../components/ui.jsx'
+import { Button, Row } from '../components/ui.jsx'
 import { tappable } from '../lib/use-sheet-keyboard.js'
 import { glyphOf } from '../lib/glyphs.js'
 import { dayNoteOf } from '../lib/day-notes.js'
@@ -28,9 +28,15 @@ import { CharacterSheetModal } from '../components/CharacterSheetModal.jsx'
 import { LeaderboardModal } from '../components/LeaderboardModal.jsx'
 import { weeklySummarySheet } from '../components/WeeklySummaryModal.jsx'
 import { getActiveTargets } from '../lib/targets.js'
+import { ProgressRing, WaterGlass } from '../components/DailyVisuals.jsx'
+import { PlayerBadge } from '../components/PlayerProgress.jsx'
+import { Brand } from '../components/Brand.jsx'
+import { workoutArtStyle } from '../lib/workout-art.js'
+import { firstWorkoutSheet } from '../components/FirstWorkoutSheet.jsx'
+import { needsFirstWorkout } from '../lib/first-workout.js'
 
 // Home = what to do now + a quick glance. Deep charts & history live in Stats.
-export default function Home() {
+export function HomeOverview() {
   const nav = useNavigate()
   const S = useStore(s => s.S)
   const user = useStore(s => s.user)
@@ -131,120 +137,101 @@ export default function Home() {
   // already in progress wins, as on the today row — starting another would overwrite it.
   const onQueueStart = id => { if (S.active) nav('/workout'); else startFlow([id]) }
 
-  return <div className="narrow">
-    <div className="hdr">
-      <SeasonDeco spot="header-bats" />
-      <div><h1>{user ? t('Hi {0}', user.name) : 'NXT FORM'}</h1><div className="sub">{today.toLocaleDateString(dateLocale(), { weekday: 'long', day: 'numeric', month: 'long' })}</div></div>
-      <button className="iconbtn" onClick={() => nav('/settings')} aria-label={trouble ? t('Settings') + ', ' + t('Connection problem') : t('Settings')}><Icon name="gear" />{trouble && <span className="tab-dot" aria-hidden="true" />}</button>
+  return <div className="narrow s-home" style={{ paddingBottom: 16 }}>
+    <header className="home-heading">
+      <div>
+        <div className="k">{t('YOUR NEXT FORM STARTS HERE')}</div>
+        <h1>{t('Today')}</h1>
+        <p>{today.toLocaleDateString(dateLocale(), { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+      </div>
+      <button className="ib" onClick={() => nav('/settings')} aria-label={t('Settings')}>
+        <Icon name="gear" />
+        {trouble && <span className="tab-dot" aria-hidden="true" />}
+      </button>
+    </header>
+
+    <div className="g2" style={{ marginBottom: 24 }}>
+      <div className="cd level-card">
+        <div className="row between" style={{ marginBottom: 12 }}>
+          <span className="k">{t('Your level')}</span>
+          <span className="st" aria-label={t('{0} day streak', streakDays)}><Icon name="flame" />{streakDays}</span>
+        </div>
+        <button className="level-summary" onClick={openCharacterSheet} aria-label={t('View character sheet')}>
+          <strong>{t('Level {0}', levelInfo.level)}</strong>
+          <span>{levelInfo.title}</span>
+          <div className="progress-track"><span style={{ width: `${levelInfo.progressPct}%` }} /></div>
+          <small>{levelInfo.xpIntoCurrentLevel} / {levelInfo.xpNeededForCurrentLevel} XP</small>
+        </button>
+        <button className="level-rank" onClick={openLeaderboard}><Icon name="trophy" />{t('Rankings')}<Icon name="chevronRight" /></button>
+      </div>
+      <div className="cd water-card">
+        <div className="row between" style={{ marginBottom: 12 }}><span className="k">{t('Hydration')}</span><Icon name="drop" /></div>
+        <strong className="water-value">{((todayNutrition.waterMl || 0) / 1000).toFixed(1)}<small> / {(waterTarget / 1000).toFixed(1)} L</small></strong>
+        <div className="progress-track" style={{ marginTop: 14 }}><span style={{ width: `${Math.min(100, ((todayNutrition.waterMl || 0) / waterTarget) * 100)}%` }} /></div>
+        <button className="water-add" onClick={() => { useNutrition.getState().addWater(todayStr, 250); useUI.getState().toast(t('+250 ml water logged')); }}><Icon name="plus" />{t('250 ml water')}</button>
+      </div>
     </div>
 
-    {/* NXT FORM Level, XP & Quests Card */}
-    <div className="card tappable" style={{ cursor: 'pointer', marginBottom: 12 }} {...tappable(openCharacterSheet)}>
-      <div className="row between" style={{ marginBottom: 6 }}>
-        <div className="row" style={{ gap: 9, alignItems: 'center' }}>
-          <span className="lrow-i" style={{
-            background: 'var(--acc)',
-            color: 'var(--on-acc)',
-            width: 32,
-            height: 32,
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 3px 10px -2px var(--acc)'
-          }}>
-            <Icon name={levelInfo.form.icon} style={{ fontSize: 17 }} />
-          </span>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 16 }}>{levelInfo.form.name}</div>
-            <div className="small muted">{levelInfo.title} · {levelInfo.form.subtitle}</div>
-          </div>
+    {/* MOV v3 Next Workout Hero Card */}
+    <div
+      className="cd row tappable hero-workout"
+      style={{
+        background: 'linear-gradient(160deg, #FF8A1F, #E8590C)',
+        border: 0,
+        color: '#0A0A0A',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        cursor: 'pointer',
+        marginBottom: 14,
+        padding: '16px 18px',
+        boxShadow: 'none'
+      }}
+      {...tappable(() => S.active || doneToday || routine ? onToday() : nav('/workout'))}
+    >
+      <div>
+        <div className="k" style={{ color: '#0A0A0A', fontWeight: 800, marginBottom: 2 }}>
+          {S.active ? t('Workout in progress') : doneToday ? t('Workout complete') : routine ? t('Today’s training') : t('MAKE YOUR NEXT MOVE')}
         </div>
-
-        <div className="row" style={{ gap: 6, alignItems: 'center' }}>
-          <button
-            className="tag"
-            style={{
-              background: 'rgba(234, 179, 8, 0.15)',
-              color: 'var(--amber, #f59e0b)',
-              border: '1px solid rgba(234, 179, 8, 0.3)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '3px 8px',
-              borderRadius: 8,
-              fontWeight: 700
-            }}
-            onClick={openLeaderboard}
-            aria-label="Open Leaderboard"
-          >
-            <Icon name="trophy" size={13} />
-            <span>{t('Rankings')}</span>
-          </button>
-          <span className="tag" style={{ color: 'var(--acc)', background: 'var(--acc-soft)', fontWeight: 700 }}>
-            LVL {levelInfo.level}
-          </span>
-          <Icon name="chevronRight" className="chev" />
+        <div style={{ fontFamily: 'var(--font-app)', fontWeight: 800, fontSize: 22, lineHeight: 1.1, letterSpacing: '-0.03em', color: '#0A0A0A' }}>
+          {S.active ? (editingSaved ? S.active.name : S.active.name) : doneToday ? (doneToday.name || t('Finished')) : (todayName || t('Choose your workout'))}
+        </div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: '#0A0A0A', opacity: 0.8, marginTop: 4 }}>
+          {routine ? tn('{0} exercise', '{0} exercises', todayRoutines.reduce((n, r) => n + r.ex.length, 0)) : doneToday ? t('Every session adds up.') : t('Start freestyle or pick a routine')}
         </div>
       </div>
-
-      {/* XP Progress Bar */}
-      <div style={{ margin: '6px 0 10px' }}>
-        <div className="row between small" style={{ marginBottom: 3 }}>
-          <span className="muted">{t('XP Progress')}</span>
-          <span style={{ fontWeight: 600 }}>{levelInfo.xpIntoCurrentLevel} / {levelInfo.xpNeededForCurrentLevel} XP</span>
-        </div>
-        <div style={{ width: '100%', height: 7, background: 'var(--surface-3)', borderRadius: 4, overflow: 'hidden' }}>
-          <div style={{
-            height: '100%',
-            width: `${levelInfo.progressPct}%`,
-            background: 'var(--acc)',
-            borderRadius: 4,
-            transition: 'width 200ms ease'
-          }} />
-        </div>
+      <div className="ico" style={{ background: '#0A0A0A', borderRadius: '50%', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name={S.active ? 'play' : doneToday ? 'check' : 'arrowRight'} style={{ color: '#FF6A13', fontSize: 18 }} />
       </div>
+    </div>
 
-      {/* Today's 3 Daily Quests */}
-      <div style={{ borderTop: 'var(--hair) solid var(--sep)', paddingTop: 8 }}>
-        <div className="row between" style={{ marginBottom: 6 }}>
-          <span className="lbl2 small">{t("Today's Quests")}</span>
-          <span className="small row" style={{ gap: 4, color: 'var(--orange)', fontWeight: 600 }}>
-            <Icon name="flame" style={{ fontSize: 13 }} />
-            {streakDays} {t('day streak')}
-            {streakFreezes > 0 && <span style={{ color: 'var(--blue)', marginInlineStart: 4 }}>🛡️ {streakFreezes}</span>}
-          </span>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          {dailyQuests.map(q => (
-            <div key={q.id} className="row between small" style={{
-              padding: '6px 8px',
-              background: q.completed ? 'color-mix(in srgb,var(--green) 10%,transparent)' : 'var(--surface-2)',
-              borderRadius: 'var(--r-sm)'
-            }}>
-              <div className="row" style={{ gap: 6, alignItems: 'center' }}>
-                <Icon
-                  name={q.completed ? 'checkCircle' : 'dot'}
-                  style={{ color: q.completed ? 'var(--green)' : 'var(--label-3)', fontSize: 14 }}
-                />
-                <span style={{ textDecoration: q.completed ? 'line-through' : 'none', opacity: q.completed ? 0.8 : 1 }}>
-                  {q.title}
-                </span>
-              </div>
-              <span className="tag xs" style={{
-                color: q.completed ? 'var(--green)' : 'var(--acc)',
-                background: q.completed ? 'transparent' : 'var(--acc-soft)',
-                fontSize: 11
-              }}>
-                +{q.xp} XP
-              </span>
+    <details className="home-quests">
+      <summary><span>{t("Daily quests")}</span><span className="quest-count">{dailyQuests.filter(q => q.completed).length} / {dailyQuests.length} {t("complete")} <Icon name="chevronDown" /></span></summary>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+      {dailyQuests.map((q, idx) => {
+        const iconBg = idx === 0 ? '#FFB3472e' : idx === 1 ? '#5EA8FF2e' : '#FF6A132e';
+        const iconColor = idx === 0 ? '#FFB347' : idx === 1 ? '#5EA8FF' : '#FF6A13';
+        return (
+          <div key={q.id} className="rw" style={{ margin: 0 }}>
+            <div className="ico" style={{ background: iconBg, width: 44, height: 44, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name={q.completed ? 'checkCircle' : idx === 0 ? 'utensils' : idx === 1 ? 'drop' : 'dumbbell'} style={{ color: iconColor, fontSize: 18 }} />
             </div>
-          ))}
-        </div>
-      </div>
+            <div>
+              <b style={{ color: 'var(--label)', fontSize: 14, textDecoration: q.completed ? 'line-through' : 'none', opacity: q.completed ? 0.75 : 1 }}>
+                {q.title}
+              </b>
+              <div className="mu" style={{ fontSize: 12 }}>
+                {q.completed ? t('Completed') : idx === 0 ? t('Fuel up') : idx === 1 ? t('Stay hydrated') : todayName || t('Build your momentum')}
+              </div>
+            </div>
+            <div className="pill" style={{ background: q.completed ? '#5EA8FF' : '#FF6A13', color: '#0A0A0A', fontWeight: 800 }}>
+              {q.completed ? 'DONE' : `+${q.xp} XP`}
+            </div>
+          </div>
+        );
+      })}
     </div>
+
+    </details>
 
     <div className="card">
       {/* A coach week runs by order, not by weekday, so its progress row stands in for the
@@ -331,7 +318,7 @@ export default function Home() {
     )}
 
     {/* Nutrition & Calorie Card */}
-    <div className="card">
+    <div className="card nutrition-card">
       <div className="row between" style={{ marginBottom: 6 }}>
         <div className="row" style={{ gap: 8, alignItems: 'center' }}>
           <span className="lrow-i" style={{ background: 'var(--acc)', color: 'var(--on-acc)', width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -424,5 +411,99 @@ export default function Home() {
         <Icon name="calendar" className="chev" style={{ fontSize: 20 }} />
       </div>
     </div>
+  </div>
+}
+
+
+export function HomeMenu({ close }) {
+  const nav = useNavigate()
+  const openSheet = useUI(s => s.openSheet)
+  const go = path => { close(); nav(path) }
+  const show = Component => { close(); openSheet(done => <Component close={done} />) }
+  return <div className="simple-menu">
+    <div className="simple-sheet-header"><h3>{t('More')}</h3><button className="iconbtn" aria-label={t('Close')} onClick={close}><Icon name="xmark" /></button></div>
+    <details className="menu-training"><summary><span className="menu-category-icon"><Icon name="questTraining" /></span><span>{t('Training')}<small>{t('Routines, exercises & schedule')}</small></span><Icon name="chevronDown" /></summary>
+      <Row title={t('My workout plan')} accessory="chevron" onClick={() => go('/plan')} />
+      <Row title={t('Exercise library')} accessory="chevron" onClick={() => go('/library')} />
+      <Row title={t('Explore muscles')} accessory="chevron" onClick={() => go('/muscles')} />
+      <Row title={t('Gym check-in')} accessory="chevron" onClick={() => go('/checkin')} />
+    </details>
+    <details className="menu-progress"><summary><span className="menu-category-icon"><Icon name="gameProgress" /></span><span>{t('Progress')}<small>{t('Your activity & body insights')}</small></span><Icon name="chevronDown" /></summary>
+      <Row title={t('Statistics')} accessory="chevron" onClick={() => go('/stats')} />
+      <Row title={t('Workout history')} accessory="chevron" onClick={() => go('/history')} />
+      <Row title={t('Log body weight')} onClick={() => { close(); bwSheet() }} />
+      <Row title={t('Body measurements')} accessory="chevron" onClick={() => go('/measurements')} />
+      <Row title={t('Progress photos')} accessory="chevron" onClick={() => go('/progress-photos')} />
+      <Row title={t('Structural balance')} accessory="chevron" onClick={() => go('/structural-balance')} />
+      <Row title={t('Weekly summary')} onClick={() => { close(); weeklySummarySheet() }} />
+    </details>
+    <details className="menu-rewards"><summary><span className="menu-category-icon"><Icon name="trophy" /></span><span>{t('Rewards & goals')}<small>{t('Milestones, rankings & more')}</small></span><Icon name="chevronDown" /></summary>
+      <Row title={t('Character, badges & forms')} onClick={() => show(CharacterSheetModal)} />
+      <Row title={t('Rankings')} onClick={() => show(LeaderboardModal)} />
+      <Row title={t('Daily quests & detailed overview')} accessory="chevron" onClick={() => go('/overview')} />
+      <Row title={t('Weight goal')} onClick={() => { close(); goalSheet() }} />
+    </details>
+    <Row icon="gear" title={t('Settings & account')} accessory="chevron" onClick={() => go('/settings')} />
+  </div>
+}
+
+export default function Home() {
+  const nav = useNavigate()
+  const S = useStore(s => s.S)
+  const user = useStore(s => s.user)
+  const days = useNutrition(s => s.days)
+  const addWater = useNutrition(s => s.addWater)
+  const openSheet = useUI(s => s.openSheet)
+  const toast = useUI(s => s.toast)
+  const today = todayISO()
+  const day = days[today] || { entries: [], waterMl: 0 }
+  const totals = computeDayTotals(day.entries || [])
+  const targets = getActiveTargets(S)
+  const routines = effectiveRoutines(S, today)
+  const hasTodayWorkout = routines.some(r => r.ex.length > 0)
+  const chooseWorkout = !hasTodayWorkout && S.routines.some(r => r.ex.length > 0)
+  const firstWorkout = needsFirstWorkout(S)
+  const logWater = amount => { addWater(today, amount); toast(t('{0} ml water added', amount)) }
+  const plannedWorkoutName = routines.map(r => r.name).join(' + ')
+  const next = nextTrainingDay(S, today)
+  const nextName = next?.routines.map(r => r.name).join(' + ')
+  const isRestDay = S.dayPlan[today] === 'rest' || (!plannedWorkoutName && !!next)
+  const planTitle = S.active?.name || plannedWorkoutName || (firstWorkout ? t('Your first workout') : isRestDay ? t('Rest day') : t('Your workout'))
+  const loggedToday = (S.workouts || []).filter(workout => workout.d === today)
+  const queued = queueOf(S)?.ids || []
+  const plannedDone = routines.every(routine => !queued.includes(routine.id) && loggedToday.some(workout => (Array.isArray(workout.routineIds) ? workout.routineIds : [workout.routineId]).includes(routine.id)))
+  const completed = !S.active && plannedDone ? loggedToday.at(-1) : null
+  const recovery = isRestDay && !S.active && !completed
+  const artwork = S.active || completed || (hasTodayWorkout ? routines : isRestDay ? { name: 'Recovery' } : null)
+  const workoutName = S.active?.name || (completed ? t('You showed up.') : isRestDay ? t('Reset. Recharge.') : hasTodayWorkout ? t('Find your strong.') : t('Make your next move.'))
+  const exerciseCount = S.active || completed ? ((S.active || completed).entries || []).length : routines.reduce((count, routine) => count + routine.ex.length, 0)
+  const register = async () => { const { RegisterSheet } = await import('./Login.jsx'); openSheet(close => <RegisterSheet close={close} />) }
+  return <div className="simple-home home-refined">
+    <div className="home-app-bar"><Brand /><PlayerBadge /></div>
+    <header className="simple-home-header"><div><p>{user?.name ? t('Good to see you, {0}', user.name) : t('Your workout plan')}</p><h1 className="home-plan-title">{planTitle}<span>.</span></h1></div></header>
+    {next && !S.active && <button className="home-next-session" onClick={() => nav('/plan')} aria-label={t('Next workout: {0}, {1}', nextName, t(DAYN[next.weekday]))}><span>{t('Next up')}</span><b>{nextName}</b><small>{t(DAYN[next.weekday])}</small><Icon name="arrowRight" /></button>}
+    <div className="daily-grid">
+      <section className={'daily-action daily-workout' + (completed ? ' is-complete' : '')} style={workoutArtStyle(artwork)}>
+        <div className="workout-photo" aria-hidden="true" />
+        <div className="daily-action-heading"><span className="daily-icon"><Icon name={completed ? 'check' : recovery ? 'sparkles' : 'questTraining'} /></span><h2>{completed ? t('Logged today') : recovery ? t('Recovery is part of progress') : t('Your training')}</h2>{S.active && <span className="session-badge"><i />{t('In progress')}</span>}</div>
+        <div className="daily-workout-copy"><h3>{firstWorkout && !completed ? t('Your first move.') : workoutName}</h3><p>{S.active ? t('Pick up where you left off.') : completed ? t('{0} is in the books. Every session adds up.', completed.name || t('Your workout')) : isRestDay ? t('A lighter day today. Your next session is already lined up.') : hasTodayWorkout ? t('Your plan is ready. One set at a time.') : t('Three simple moves. No gym experience needed.')}</p></div>
+        <div className="workout-card-meta"><span><Icon name={completed ? 'check' : 'dumbbell'} />{exerciseCount ? tn('{0} exercise', '{0} exercises', exerciseCount) : completed ? t('Workout saved') : recovery ? t('Move at your own pace') : firstWorkout ? t('3 moves · No equipment') : t('A fresh start, whenever you’re ready')}</span></div>
+        <Button variant="primary" trailingIcon="arrowRight" onClick={() => completed ? workoutDetailSheet(completed) : S.active || chooseWorkout ? nav('/workout') : firstWorkout ? firstWorkoutSheet() : startFlow(hasTodayWorkout ? effectiveRoutineIds(S, today) : [])}>{S.active ? t('Resume workout') : completed ? t('View workout') : chooseWorkout ? t('Choose workout') : t('Start workout')}</Button>
+        {!S.active && !completed && <button className="home-quick-exercise" onClick={() => quickExerciseSheet()}>{t('Log an exercise')}<Icon name="plus" /></button>}
+      </section>
+      <section className="daily-action daily-water">
+        <div className="daily-action-heading"><span className="daily-icon"><Icon name="questWater" /></span><h2>{t('Water')}</h2></div>
+        <div className="daily-metric-row"><div><div className="daily-total" key={day.waterMl}>{((day.waterMl || 0) / 1000).toFixed(2).replace(/0$/, '')}<small> L</small></div><p className="daily-target">{t('of {0} L today', (targets.waterMl / 1000).toFixed(1))}</p></div><WaterGlass value={day.waterMl} target={targets.waterMl} /></div>
+        <div className="home-goal-track water-goal" role="progressbar" aria-label={t('Daily water goal')} aria-valuemin={0} aria-valuemax={targets.waterMl} aria-valuenow={Math.min(day.waterMl || 0, targets.waterMl)}><span style={{ width: `${Math.min(100, ((day.waterMl || 0) / targets.waterMl) * 100)}%` }} /></div>
+        <div className="daily-buttons"><Button variant="secondary" onClick={() => logWater(250)}>{t('+ 250 ml')}</Button><Button variant="secondary" onClick={() => logWater(500)}>{t('+ 500 ml')}</Button></div>
+      </section>
+      <section className="daily-action daily-calories">
+        <div className="daily-action-heading"><span className="daily-icon"><Icon name="questFuel" /></span><h2>{t('Calories')}</h2><button onClick={() => nav('/food')}>{t('Diary')}<Icon name="chevronRight" /></button></div>
+        <div className="daily-metric-row"><div><div className="daily-total">{Math.round(totals.calories).toLocaleString()}<small> kcal</small></div><p className="daily-target">{t('of {0} kcal today', targets.dailyCalories.toLocaleString())}</p></div><ProgressRing value={totals.calories} target={targets.dailyCalories}><Icon name="utensils" /></ProgressRing></div>
+        <div className="home-goal-track" role="progressbar" aria-label={t('Daily calorie goal')} aria-valuemin={0} aria-valuemax={targets.dailyCalories} aria-valuenow={Math.min(totals.calories, targets.dailyCalories)}><span style={{ width: `${Math.min(100, (totals.calories / targets.dailyCalories) * 100)}%` }} /></div>
+        <Button variant="secondary" icon="plus" onClick={() => openSheet(close => <FoodSearchSheet date={today} close={close} />)}>{t('Log food')}</Button>
+      </section>
+    </div>
+    {!user && <section className="home-profile-card"><Icon name="bolt" /><div><h2>{t('Make your progress yours.')}</h2><p>{t('Create a profile to save your workouts and daily wins.')}</p></div><Button variant="primary" trailingIcon="arrowRight" onClick={register}>{t('Create profile')}</Button></section>}
   </div>
 }

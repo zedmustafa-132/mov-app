@@ -71,8 +71,8 @@ export default function Library() {
     <div className="hdr lib-hdr"><div><h1>{t('Exercises')}</h1></div>
       <Button size="sm" variant="tinted" icon="figureStrength" onClick={() => nav('/muscles')}>{t('By muscle')}</Button>
       <div className="sub lib-count">{ownCount
-        ? tn('{1} animated exercises + 1 of your own', '{1} animated exercises + {0} of your own', ownCount, EXDB.length)
-        : t('{0} exercises with animations', EXDB.length)}</div>
+        ? tn('{1} exercises + 1 of your own', '{1} exercises + {0} of your own', ownCount, EXDB.length)
+        : t('{0} exercises to explore', EXDB.length)}</div>
     </div>
     <div className="search-row" style={{ marginBottom: 10 }}><div className={'search' + (narrowed ? ' has-count' : '') + (q ? ' has-clear' : '')}><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
       <input className="input" placeholder={t('Search…')} value={q} onChange={e => { setQ(e.target.value); setShown(40) }} />
@@ -89,6 +89,7 @@ export default function Library() {
     {/* Changing body part keeps the equipment filter (issue #71): the eqOn fallback above drops
         it only for the current view if the new body part has nothing under it, without forgetting
         the choice. "All" clears it, since it spans every body part. */}
+    <details className="simple-filters"><summary>{t("Filters")}<Icon name="slider" /></summary>
     <div className="chips" ref={bpStrip} style={{ marginBottom: eqOpts.length > 1 || catOpts.length > 1 ? 8 : 12 }}>
       <button className={'chip nocap' + (!bp ? ' on' : '')} onClick={() => { setBp(''); setEq(''); setShown(40) }}>{t('All')}</button>
       {BODYPARTS.map(b => <button key={b} className={'chip' + (bp === b ? ' on' : '')} onClick={() => { setBp(b); setShown(40) }}>{t(b)}</button>)}
@@ -101,6 +102,7 @@ export default function Library() {
       <button className={'chip nocap' + (!eqOn ? ' on' : '')} onClick={() => { setEq(''); setShown(40) }}>{t('Any equipment')}</button>
       {eqOpts.map(x => <button key={x} className={'chip' + (eqOn === x ? ' on' : '')} onClick={() => { setEq(x); setShown(40) }}>{t(x)}</button>)}
     </div>}
+    </details>
     <div className={'list' + (S.exerciseView === 'cards' ? ' ex-grid' : '')}>
       <div className="item ex-new" {...tappable(() => customExSheet(null, ex => exerciseDetailSheet(ex), q.trim()))}>
         <div className="thumb thumb-x"><Icon name="plusCircle" /></div>

@@ -9,20 +9,23 @@ import { useState, useRef, useEffect } from 'react'
 import Icon from '../components/Icon.jsx'
 import { Button, Segmented } from '../components/ui.jsx'
 import { askAddDeviceData } from '../sheets.jsx'
-import { passwordOn, PasswordRegisterForm, openPasswordSignIn } from '../components/PasswordAuth.jsx'
+import { passwordOn, AuthHeader, AuthInput, PasswordRegisterForm, openPasswordSignIn } from '../components/PasswordAuth.jsx'
 import { openDeviceLinkRedeem } from '../components/Passkeys.jsx'
 import { openLostAccess } from '../components/LostAccess.jsx'
+import { Brand } from '../components/Brand.jsx'
+import { MeasurementUnitChoice, rememberWeightUnit } from '../components/UnitChoice.jsx'
 
-function RegisterSheet({ close }) {
+export function RegisterSheet({ close }) {
   const { setUser, pushState, pullState, loadConfig } = useStore()
   const config = useStore(s => s.config)
   const [name, setName] = useState('')
   const [code, setCode] = useState('')
+  const [preferredUnit, setPreferredUnit] = useState(() => useStore.getState().S?.unit || 'kg')
   const inviteOnly = !!config?.invite_only
   // A password is offered only where the instance allows it (#118), and is the only choice in a
   // browser that cannot make a passkey. Where both work, the passkey stays the first one.
   const pwOn = passwordOn(config)
-  const [how, setHow] = useState(webauthnOK() ? 'passkey' : 'password')
+  const [how, setHow] = useState(config?.temporary_url ? 'password' : webauthnOK() ? 'passkey' : 'password')
   const ref = useRef(null)
   useEffect(() => { setTimeout(() => ref.current?.focus(), 250) }, [])
   // Boot already fetched this; retry here only if that attempt failed, so the invite field still
@@ -37,33 +40,34 @@ function RegisterSheet({ close }) {
       setUser(u); close()
       if (hasData(useStore.getState().S)) { await pushState(); useUI.getState().toast(t('Profile created, and this device’s data moved into it')) }
       else { await pullState(); useUI.getState().toast(t('Welcome, {0}', u.name)) }
+      await rememberWeightUnit(preferredUnit)
     } catch (e) { if (e.name !== 'NotAllowedError' && e.name !== 'AbortError') useUI.getState().toast(passkeyError(e, t('Registration failed'))) }
   }
-  const choose = pwOn && webauthnOK() && <>
+  const choose = pwOn && webauthnOK() && <div className="auth-method-choice">
     <Segmented options={[{ value: 'passkey', label: t('Passkey'), icon: 'fingerprint' }, { value: 'password', label: t('Password'), icon: 'key' }]}
       value={how} onChange={setHow} />
-    <div style={{ height: 12 }} />
-  </>
-  if (pwOn && how === 'password') return <>
-    <h3>{t('Create your profile')}</h3>
+  </div>
+  const heading = <AuthHeader close={close} eyebrow={t('YOUR MOV STARTS HERE')} title={t('Create your profile')} />
+  if (pwOn && how === 'password') return <div className="auth-sheet">
+    {heading}
+    <MeasurementUnitChoice value={preferredUnit} onChange={setPreferredUnit} />
     {choose}
-    <div className="muted small" style={{ marginBottom: 14 }}>{t('Pick a name and a password. You sign in with both.')}</div>
-    <PasswordRegisterForm close={close} inviteOnly={inviteOnly} name={name} setName={setName} code={code} setCode={setCode} />
-  </>
-  return <>
-    <h3>{t('Create your profile')}</h3>
+    <p className="auth-description">{t('Pick a name and a password. You sign in with both.')}</p>
+    <PasswordRegisterForm close={close} inviteOnly={inviteOnly} name={name} setName={setName} code={code} setCode={setCode} preferredUnit={preferredUnit} />
+  </div>
+  return <div className="auth-sheet">
+    {heading}
+    <MeasurementUnitChoice value={preferredUnit} onChange={setPreferredUnit} />
     {choose}
-    <div className="muted small" style={{ marginBottom: 14 }}>{t('Pick a name, then confirm with {0}. The passkey lives on your device, so no password needed.', bio())}</div>
-    <input ref={ref} className="input" placeholder={t('Your name')} maxLength={40} value={name} onChange={e => setName(e.target.value)} />
-    {inviteOnly && <>
-      <div style={{ height: 10 }} />
-      <input className="input" placeholder={t('Invite code')} maxLength={40} value={code}
-        onChange={e => setCode(e.target.value.toUpperCase())} style={{ letterSpacing: '.14em', fontWeight: 600, textAlign: 'center' }} />
-      <div className="dim small" style={{ marginTop: 6 }}>{t('This app is invite-only. Enter the code you were given.')}</div>
-    </>}
-    <div style={{ height: 12 }} />
-    <Button variant="primary" onClick={go}>{t('Create passkey')}</Button>
-  </>
+    <p className="auth-description">{t('Pick a name, then confirm with {0}. The passkey lives on your device, so no password needed.', bio())}</p>
+    <div className="auth-form">
+      <AuthInput inputRef={ref} label={t('Your name')} placeholder={t('Your name')} maxLength={40} autoComplete="nickname" value={name} onChange={e => setName(e.target.value)} />
+      {inviteOnly && <AuthInput label={t('Invite code')} icon="key" placeholder={t('Invite code')} maxLength={40} value={code}
+        onChange={e => setCode(e.target.value.toUpperCase())} style={{ letterSpacing: '.14em', fontWeight: 600 }}
+        hint={t('This app is invite-only. Enter the code you were given.')} />}
+      <Button variant="primary" trailingIcon="arrowRight" onClick={go}>{t('Create passkey')}</Button>
+    </div>
+  </div>
 }
 
 export default function Login() {
@@ -76,10 +80,7 @@ export default function Login() {
     try { const u = await passkeyLogin(); setUser(u, { adopt: true }); await adoptProfile(askAddDeviceData); useUI.getState().toast(t('Welcome back, {0}', u.name)) }
     catch (e) { if (e.name !== 'NotAllowedError' && e.name !== 'AbortError') useUI.getState().toast(passkeyError(e, t('Sign-in failed'))) }
   }
-  const head = <>
-    <div style={{ fontSize: 54, display: 'flex', justifyContent: 'center', color: 'var(--acc)' }}><Icon name="dumbbell" /></div>
-    <h1 style={{ fontSize: 34, fontWeight: 700, letterSpacing: '-.028em', margin: '10px 0 4px' }}>NXT FORM</h1>
-  </>
+  const head = <div className="login-brand"><Brand /></div>
   const wrap = { display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '78vh', textAlign: 'center' }
 
   // Demo build: no backend to sign in against — the only way in is the local guest profile.
@@ -98,37 +99,37 @@ export default function Login() {
   )
 
   return (
-    <div className="narrow" style={wrap}>
-      {head}
-      <div className="muted" style={{ marginBottom: 34 }}>{t('Level up your fitness & nutrition.')}</div>
-      {webauthnOK() ? <>
-        <Button variant="primary" icon="fingerprint" onClick={signIn}>{t('Sign in with passkey')}</Button>
-        <div style={{ height: 10 }} />
-        {pwOn && <><Button icon="key" onClick={() => openPasswordSignIn()}>{t('Sign in with password')}</Button><div style={{ height: 10 }} /></>}
-        <Button icon="plusCircle" onClick={register}>{t('Create new profile')}</Button>
-        {/* Already signed in on another device: a code from there gives this one a passkey of
-            its own (#95), instead of a new, empty profile. */}
-        <div style={{ height: 10 }} />
-        <Button variant="ghost" className="dim" icon="qr" onClick={openDeviceLinkRedeem}>{t('Use a code from your other device')}</Button>
-        {/* No device signs you in any more (#584): what to try, and where a recovery code goes. */}
-        <Button variant="ghost" className="dim" onClick={openLostAccess}>{t('Lost access?')}</Button>
-        {canGuest && <div style={{ height: 4 }} />}
-      </> : pwOn ? <>
-        {/* Plain http on a LAN address, or a browser without passkey support: the password is
-            the way in, and the only way to create a profile from here. */}
-        <div className="card small muted" style={{ textAlign: 'start', marginBottom: 14 }}>{t("This browser doesn't support passkeys. Sign in with your name and password instead.")}</div>
-        <Button variant="primary" icon="key" onClick={() => openPasswordSignIn()}>{t('Sign in with password')}</Button>
-        <div style={{ height: 10 }} />
-        <Button icon="plusCircle" onClick={register}>{t('Create new profile')}</Button>
-        <Button variant="ghost" className="dim" onClick={openLostAccess}>{t('Lost access?')}</Button>
-        {canGuest && <div style={{ height: 10 }} />}
-      </> : <div className="card small muted" style={{ textAlign: 'start' }}>{canGuest
-        ? t("This browser doesn't do passkeys, but you can still use openGym locally on this device.")
-        // Without passkeys and without the guest entrance there is no way in from this browser,
-        // so say that plainly instead of offering a local profile that cannot be created.
-        : t("This browser doesn't support passkeys, and this instance requires an account. Try a browser or device with passkey support.")}</div>}
-      {canGuest && <Button variant="ghost" className="dim" onClick={() => setGuest(true)}>{t('Continue without account')}</Button>}
-      <div className="dim small" style={{ marginTop: 26, lineHeight: 1.5 }}>{pwOn ? t('Passkeys use {0}. A password works too, where passkeys do not.', bio()) : t('Passkeys use {0}. No passwords to remember.', bio())}<br />{t('Each profile keeps its own plan, workouts & body weight.')}</div>
+    <div className="s-welcome">
+      <section className="welcome-visual">
+        <img className="welcome-photo" src="/images/training-editorial.webp" alt="" fetchPriority="high" />
+        <header className="welcome-identity"><Brand /></header>
+        <div className="welcome-hero-copy">
+          <h1>{t('One move.')}<br /><span>{t('Stronger you.')}</span></h1>
+        </div>
+      </section>
+      <section className="welcome-entry" aria-label={t('Get started')}>
+        <p className="welcome-summary">{t('Workouts, food & water. Made simple.')}</p>
+        <div className="welcome-entry-actions">
+          <Button className="welcome-create-profile" variant="primary" trailingIcon="arrowRight" onClick={register}>{t('Create profile')}</Button>
+          {config?.temporary_url && pwOn
+            ? <Button variant="secondary" icon="key" onClick={() => openPasswordSignIn(webauthnOK() ? signIn : undefined)}>{t('Sign in')}</Button>
+            : webauthnOK() ? <Button variant="secondary" icon="fingerprint" onClick={signIn}>{t('Sign in')}</Button>
+              : pwOn ? <Button variant="secondary" icon="key" onClick={() => openPasswordSignIn()}>{t('Sign in')}</Button> : null}
+        </div>
+        {canGuest && <div className="welcome-guest">
+          <button type="button" onClick={() => setGuest(true)}>{t('Try without a profile')}<Icon name="arrowRight" /></button>
+          <p>{t('Your data stays on this device.')}</p>
+        </div>}
+        <details className="welcome-access-options">
+          <summary>{t('More sign-in options')}<Icon name="chevronDown" /></summary>
+          <div className="welcome-access-links">
+            {pwOn && webauthnOK() && !config?.temporary_url && <button type="button" onClick={() => openPasswordSignIn(signIn)}><Icon name="key" />{t('Use password')}</button>}
+            {pwOn && webauthnOK() && config?.temporary_url && <button type="button" onClick={signIn}><Icon name="fingerprint" />{t('Use passkey')}</button>}
+            {webauthnOK() && <button type="button" onClick={openDeviceLinkRedeem}><Icon name="link" />{t('Link device')}</button>}
+            <button type="button" onClick={openLostAccess}><Icon name="shield" />{t('Lost access?')}</button>
+          </div>
+        </details>
+      </section>
     </div>
   )
 }

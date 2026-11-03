@@ -8,10 +8,11 @@ import { uid, exerciseNameText } from '../lib/format.js'
 import { t, exerciseNameFor, exerciseNameClass } from '../lib/i18n.js'
 import { supersetUnits, moveRoutineEntry, cleanupSg, exLine, pickedExerciseConfig } from '../lib/history.js'
 import { Thumb } from '../components/Media.jsx'
-import { glyphPicker, exercisePicker, exConfigSheet, confirmSheet, supersetSheet } from '../sheets.jsx'
+import { glyphPicker, exercisePicker, exConfigSheet, confirmSheet, supersetSheet, startFlow } from '../sheets.jsx'
 import { supersetMeta, setSupersetMeta } from '../lib/superset-meta.js'
 import { fmtRest } from '../lib/duration.js'
 import Icon from '../components/Icon.jsx'
+import { workoutArtStyle } from '../lib/workout-art.js'
 import { glyphOf } from '../lib/glyphs.js'
 import { Button, Row, SelectRow, Switch } from '../components/ui.jsx'
 import SwipeRow from '../components/SwipeRow.jsx'
@@ -25,6 +26,7 @@ import { speedUnitOf } from '../lib/speed.js'
 import { POLICIES_FOR, POLICY_NAME, POLICY_DESC } from '../lib/progression.js'
 import BodyMap from '../components/BodyMap.jsx'
 import { loadOfRoutine, rankOf, MUSCLE_NAME } from '../lib/muscles.js'
+import './plan-ux.css'
 
 export const ROUTINE_LONG_PRESS_MS = 380
 export const ROUTINE_DRAG_SLOP = 8
@@ -370,6 +372,7 @@ export default function RoutineEdit() {
   const update = useStore(s => s.update)
   const toast = useUI(s => s.toast)
   const r = S.routines.find(x => x.id === id)
+  const [arranging, setArranging] = useState(false)
   useEffect(() => { if (!r) nav('/plan') }, [!!r])
   // Editing here has no explicit "save" — every field change persists immediately. A single
   // auto-backup on the way out (not per keystroke) covers the whole editing session, deletion
@@ -463,38 +466,19 @@ export default function RoutineEdit() {
   const missingCount = profile ? r.ex.filter(e => !exAvailable(S, exOr(e.id))).length : 0
   const swipe = workoutControls(S).swipeSets
 
-  return <div className="narrow">
-    <div className="hdr">
+  return <div className="narrow routine-editor">
+    <div className="hdr routine-editor-header">
       <button className="iconbtn" data-back="/plan" onClick={() => nav('/plan')} aria-label={t('Plan')}><Icon name="chevronLeft" /></button>
-      <div style={{ flex: 1, margin: '0 12px' }}>
-        <input className="input" defaultValue={r.name} style={{ fontWeight: 600, fontSize: 20, letterSpacing: '-.021em' }}
+      <div className="routine-editor-heading"><h1>{t('Your routine')}</h1><p>{t('Changes save automatically.')}</p></div>
+      <Button size="sm" variant="tinted" onClick={() => nav('/plan')}>{t('Done')}</Button>
+    </div>
+    <div className="routine-editor-cover" style={workoutArtStyle(r)} aria-hidden="true" />
+    <div className="routine-name-card">
+      <label><span>{t('Routine name')}</span>
+        <input className="input" aria-label={t('Routine name')} defaultValue={r.name} placeholder={t('e.g. Full body workout')} style={{ fontWeight: 600, fontSize: 20, letterSpacing: '-.021em' }}
           onChange={e => update(s => { s.routines.find(x => x.id === id).name = e.target.value.trim() || t('Routine') })} />
-      </div>
+      </label>
       <button className="iconbtn" aria-label={t('Pick an icon')} onClick={() => glyphPicker(r.emoji, g => update(s => { s.routines.find(x => x.id === id).emoji = g }))}><Icon name={glyphOf(r.emoji)} /></button>
-    </div>
-
-    <div className="sect-b" style={{ marginBottom: 16 }}>
-      <SelectRow icon="chartLine" title={t('Progression')} sheetTitle={t('Progression')}
-        value={r.prog || 'linear'} onChange={v => update(s => { s.routines.find(x => x.id === id).prog = v })}
-        options={POLICIES_FOR.reps.map(p => ({ value: p, label: t(POLICY_NAME[p]), subtitle: t(POLICY_DESC[p]) }))} />
-      {/* Two controls that read alike and are not (issue #294). Progression picks how this
-          routine's own targets move, and "No automatic progression" keeps them where they are.
-          This switch decides whether the routine's workouts count at all: a deload routine's
-          sessions open at its own numbers and are never the baseline the next regular session
-          progresses from (session-start.js, history.js entryExcluded). */}
-      <Row icon="chartLineSlash" iconTint="var(--orange)" title={t('Deload routine')}
-        subtitle={t('Its workouts do not count toward progression. They still show in history and statistics.')}>
-        <Switch checked={r.excludeFromProgression === true} onChange={v => update(s => {
-          const routine = s.routines.find(x => x.id === id)
-          if (v) routine.excludeFromProgression = true
-          else delete routine.excludeFromProgression
-        })} />
-      </Row>
-    </div>
-    <div className="small dim" style={{ margin: '-10px 2px 16px' }}>
-      {r.excludeFromProgression
-        ? t('A deload routine opens at the numbers set here, so the progression above does not apply to it.') + ' ' + t('The next regular target continues from the last included workout.')
-        : t(POLICY_DESC[r.prog || 'linear'] || POLICY_DESC.linear) + ' ' + t('Applies to every exercise in this routine that does not set its own rule.')}
     </div>
 
     {missingCount > 0 && <div className="card" style={{ marginBottom: 16, borderColor: 'var(--orange)' }}>
@@ -507,9 +491,10 @@ export default function RoutineEdit() {
     {/* "Add exercise" heads the list (v1.3.11): with it under the last exercise, a long routine
         had to be scrolled to the bottom before anything could be added. */}
     <div className="row between plan-sec-h routine-ex-h">
-      <h4 className="sec">{t('Exercises')}</h4>
-      <Button size="sm" variant="tinted" icon="plus" onClick={addExercise}>{t('Add exercise')}</Button>
+      <div><h4 className="sec">{t('Exercises')}</h4></div>
+      <Button size="sm" variant="primary" icon="plus" onClick={addExercise}>{t('Add exercise')}</Button>
     </div>
+    {r.ex.length > 0 && <div className="routine-list-tools"><p className="routine-ex-help">{arranging ? t('Use the arrows to reorder. Link exercises for a superset.') : t('Tap an exercise to edit sets, reps, or weight.')}</p><Button size="sm" variant="ghost" aria-pressed={arranging} onClick={() => setArranging(!arranging)}>{arranging ? t('Done arranging') : t('Arrange')}</Button></div>}
     {r.ex.length ? <div ref={reorder.listRef} onClickCapture={reorder.onClickCapture}
       className={'list routine-list' + (reorder.drag ? ' is-reordering' : '')}>{r.ex.map((e, i) => {
       // An unresolvable id is shown rather than skipped — hiding it left an entry you
@@ -531,13 +516,13 @@ export default function RoutineEdit() {
         }}>
           {/* Shown on pointer devices only (index.css .routine-grip); the Move buttons and the
               long press stay the way in for a keyboard and a finger. */}
-          <span className="routine-grip" data-drag-handle aria-hidden="true" title={t('Reorder exercises')}><Icon name="grip" /></span>
+          <span className="routine-grip" hidden={!arranging} data-drag-handle aria-hidden="true" title={t('Reorder exercises')}><Icon name="grip" /></span>
           {ssPos.has(i) && <span className="ss-pos" aria-label={t('Superset position {0}', ssPos.get(i))}>{ssPos.get(i)}</span>}
           <Thumb ex={ex} />
           <button type="button" className="grow item-open" data-row-open><span className={`tt ${exerciseNameClass(ex)}`}>{exerciseNameFor(ex)}</span><span className="ss">{exLine(e, S.unit, speedUnitOf(S))}</span>
             {e.note && <span className="small dim" style={{ marginTop: 2 }}>{e.note}</span>}</button>
           {noEquip && <span className="tag" style={{ color: 'var(--orange)', borderColor: 'var(--orange)' }} title={t('Needs {0}, which isn’t in your active profile', t(ex.eq))}><Icon name="warning" /></span>}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 'none', alignItems: 'center' }}>
+          <div className="routine-arrange-controls" hidden={!arranging}>
             {i > 0 && <button className={'iconbtn' + (linkedPrev ? ' on-ss' : '')} title={t('Superset with exercise above')} style={{ width: 32, height: 28, borderRadius: 8, fontSize: 15 }} onClick={ev => { ev.stopPropagation(); toggleLink(i) }}><Icon name="link" /></button>}
             <div style={{ display: 'flex', gap: 2 }}>
               <button className="iconbtn" aria-label={t('Move up')} title={leavesUp ? t('Move out of the superset') : t('Move up')} disabled={!moveRoutineEntry(r.ex, i, -1)} style={{ width: 28, height: 24, borderRadius: 7, fontSize: 12 }} onClick={ev => { ev.stopPropagation(); move(i, -1) }}><Icon name="chevronUp" /></button>
@@ -566,22 +551,52 @@ export default function RoutineEdit() {
           : item}
       </div>
     })}{reorder.drag && <div className="routine-drop-indicator" data-testid="routine-drop-indicator"
-      aria-hidden="true" style={{ top: `${reorder.drag.indicatorTop}px` }} />}</div> : <div className="empty"><div className="ico"><Icon name="dumbbell" /></div>{t('No exercises yet. Add your first one!')}</div>}
+      aria-hidden="true" style={{ top: `${reorder.drag.indicatorTop}px` }} />}</div> : <div className="empty routine-ex-empty"><div className="ico"><Icon name="dumbbell" /></div><h3>{t('No exercises yet.')}</h3><p>{t('Choose a few exercises to build your workout. We’ll add sensible starting sets and reps for you.')}</p></div>}
+
+    {r.ex.length > 0 && <Button className="routine-start" variant="primary" icon="play" onClick={() => S.active ? nav('/workout') : startFlow([r.id])}>{S.active ? t('Resume current workout') : t('Start workout')}</Button>}
+
+    <details className="routine-options"><summary><span>{t('Routine settings')}<small>{r.excludeFromProgression ? t('Deload enabled') : t('Progression & deload')}</small></span><Icon name="chevronDown" /></summary><div className="routine-options-body">
+    <div className="sect-b" style={{ marginBottom: 16 }}>
+      <SelectRow icon="chartLine" title={t('Progression')} sheetTitle={t('Progression')}
+        value={r.prog || 'linear'} onChange={v => update(s => { s.routines.find(x => x.id === id).prog = v })}
+        options={POLICIES_FOR.reps.map(p => ({ value: p, label: t(POLICY_NAME[p]), subtitle: t(POLICY_DESC[p]) }))} />
+      {/* Two controls that read alike and are not (issue #294). Progression picks how this
+          routine's own targets move, and "No automatic progression" keeps them where they are.
+          This switch decides whether the routine's workouts count at all: a deload routine's
+          sessions open at its own numbers and are never the baseline the next regular session
+          progresses from (session-start.js, history.js entryExcluded). */}
+      <Row icon="chartLineSlash" iconTint="var(--orange)" title={t('Deload routine')}
+        subtitle={t('Its workouts do not count toward progression. They still show in history and statistics.')}>
+        <Switch checked={r.excludeFromProgression === true} onChange={v => update(s => {
+          const routine = s.routines.find(x => x.id === id)
+          if (v) routine.excludeFromProgression = true
+          else delete routine.excludeFromProgression
+        })} />
+      </Row>
+    </div>
+    <div className="small dim" style={{ margin: '-10px 2px 16px' }}>
+      {r.excludeFromProgression
+        ? t('A deload routine opens at the numbers set here, so the progression above does not apply to it.') + ' ' + t('The next regular target continues from the last included workout.')
+        : t(POLICY_DESC[r.prog || 'linear'] || POLICY_DESC.linear) + ' ' + t('Applies to every exercise in this routine that does not set its own rule.')}
+    </div>
+
+    </div></details>
 
     {/* Coverage of the routine as planned, so a gap shows up while you're building it
         rather than after a month of training around it. */}
     {r.ex.length > 0 && (() => {
       const load = loadOfRoutine(r)
       const { worked } = rankOf(load)
-      return <div className="card" style={{ marginTop: 12 }}>
-        <h2>{t('What this session hits')}</h2>
+      return <details className="routine-coverage">
+        <summary>{t('What this session hits')}<Icon name="chevronDown" /></summary><div className="routine-coverage-body">
         <BodyMap load={load} body={S.body} />
         <div className="mchips">
           {worked.slice(0, 6).map(m => <span key={m} className="mchip">{t(MUSCLE_NAME[m])}</span>)}
         </div>
-      </div>
+      </div></details>
     })()}
 
+    <details className="routine-more-actions"><summary>{t('More routine actions')}<Icon name="chevronDown" /></summary><div className="routine-more-body">
     <div className="small dim row" style={{ margin: '10px 2px', gap: 5 }}><Icon name="link" style={{ fontSize: 13 }} />{t('Tap the link button on an exercise to superset it with the one above. You’ll do them back-to-back.')}</div>
     <Button onClick={() => {
       const copy = copyRoutine(r, t('Copy'))
@@ -598,5 +613,6 @@ export default function RoutineEdit() {
         nav('/plan')
       }
     })}>{t('Delete routine')}</Button>
+    </div></details>
   </div>
 }

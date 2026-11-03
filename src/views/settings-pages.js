@@ -15,7 +15,7 @@ export const PAGES = {
   plan: { title: 'Plan & schedule', icon: 'calendar', tint: 'var(--orange)' },
   units: { title: 'Units & language', icon: 'ruler', tint: 'var(--teal)' },
   equipment: { title: 'Equipment', icon: 'kettlebell', tint: 'var(--indigo)' },
-  look: { title: 'Look & Home', icon: 'palette', tint: 'var(--purple)' },
+  look: { title: 'Appearance', icon: 'palette', tint: 'var(--purple)' },
   coach: { title: 'AI Coach', icon: 'sparkles', tint: 'var(--green)' },
   watch: { title: 'Apple Watch', icon: 'watch', tint: 'var(--grey)' },
   data: { title: 'Data & backup', icon: 'folder', tint: 'var(--blue)' },

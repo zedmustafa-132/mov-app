@@ -800,7 +800,7 @@ export default function Stats() {
   if (showRel) exOpts.push({ value: 'bodyweight', label: t('Bodyweight') })
 
   return <>
-    <div className="hdr"><SeasonDeco spot="stats-hdr" /><div><h1>{t('Stats')}</h1><div className="sub">{t('Progress & history')}</div></div>
+    <div className="hdr"><SeasonDeco spot="stats-hdr" /><div><h1>{t('Progress')}</h1><div className="sub">{t('Your activity, over time.')}</div></div>
       <div className="row" style={{ gap: 8 }}>
         <button className="iconbtn" onClick={weeklySummarySheet} aria-label={t('Weekly summary')} title={t('Weekly summary')}><Icon name="clipboard" /></button>
         <button className="iconbtn" onClick={reportSheet} aria-label={t('Performance report')} title={t('Performance report')}><Icon name="note" /></button>

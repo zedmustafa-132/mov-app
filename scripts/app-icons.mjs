@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* The alternate home-screen icons (Settings → Look & Home → App icon), drawn from
- * src/lib/app-icon-variants.js and the dumbbell in resources/icon.svg.
+ * src/lib/app-icon-variants.js. The original dumbbell remains an alternate icon choice.
  *
  * The glyph is five rectangles, so this draws them itself (4x4 to 8x8 samples per pixel for the
  * edges) and writes the PNGs with node:zlib: no sharp or resvg to install, and the same bytes on
@@ -11,8 +11,8 @@
  *   public/app-icons/<id>.png                                 112 px preview for the settings row
  *   ios/App/App/Assets.xcassets/AppIcon-<Name>.appiconset/    1024 px, opaque (Apple refuses alpha)
  * In 1.4.3 the picker is on the iPhone only, so there are no Android launcher files here (1.4.4
- * adds them). The default icon keeps the files @capacitor/assets made for it (docs/MOBILE.md);
- * only its preview comes from here.
+ * adds them). scripts/mov-brand.mjs owns the primary PWA/native icons and native splash art;
+ * this script also validates its default preview.
  *
  * Usage: node scripts/app-icons.mjs            write everything
  *        node scripts/app-icons.mjs --check    exit 1 when a committed file differs from a fresh draw */
@@ -26,8 +26,8 @@ export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 export const PREVIEW = 112
 export const IOS_SIZE = 1024
 
-/** The glyph's rectangles, in the 512 grid of resources/icon.svg: one source for every icon. */
-export function glyph(svg = readFileSync(join(ROOT, 'resources/icon.svg'), 'utf8')) {
+/** The retained glyph's rectangles, in the 512 grid: source for alternate dumbbell icons. */
+export function glyph(svg = readFileSync(join(ROOT, 'resources/icons/legacy-dumbbell.svg'), 'utf8')) {
   const g = svg.match(/<g[^>]*>([\s\S]*?)<\/g>/)?.[1] || ''
   return [...g.matchAll(/<rect\s+x="(\d+)"\s+y="(\d+)"\s+width="(\d+)"\s+height="(\d+)"/g)]
     .map(m => m.slice(1, 5).map(Number))
@@ -37,7 +37,7 @@ const rgb = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16))
 
 /** One icon `size` px square: the background, the glyph on it, optionally cut to a circle. */
 export function draw(v, size, { round = false, rects = glyph() } = {}) {
-  if (v.art) return drawArt(readFileSync(join(ROOT, v.art), 'utf8'), size)
+  if (v.art) return drawArt(readFileSync(join(ROOT, v.art), 'utf8'), size, { round })
   const k = size <= 256 ? 8 : 4
   const bg = rgb(v.bg), fg = rgb(v.fg)
   const ch = round ? 4 : 3
@@ -150,10 +150,11 @@ export function scene(svg) {
 }
 
 /** A hand-made icon `size` px square, opaque (iOS), 4x4 samples per pixel. */
-export function drawArt(svg, size) {
+export function drawArt(svg, size, { round = false, transparent = false } = {}) {
   const shapes = scene(svg)
   const k = 4, scale = 512 / size
-  const out = Buffer.alloc(size * size * 3)
+  const ch = round || transparent ? 4 : 3
+  const out = Buffer.alloc(size * size * ch)
   for (let y = 0; y < size; y++) {
     // Only the shapes this pixel row can touch.
     const y0 = y * scale, y1 = (y + 1) * scale
@@ -162,17 +163,22 @@ export function drawArt(svg, size) {
       const x0 = x * scale, x1 = (x + 1) * scale
       const here = row.filter(s => s.box[0] <= x1 && s.box[2] >= x0)
       const sum = [0, 0, 0]
+      let covered = 0
       for (let sy = 0; sy < k; sy++) for (let sx = 0; sx < k; sx++) {
         const px = (x + (sx + 0.5) / k) * scale, py = (y + (sy + 0.5) / k) * scale
+        if (round && (px - 256) ** 2 + (py - 256) ** 2 > 256 ** 2) continue
         const s = here.find(sh => sh.hit(px, py))
+        if (transparent && !s) continue
         const c = s ? s.color(px, py) : [0, 0, 0]
         sum[0] += c[0]; sum[1] += c[1]; sum[2] += c[2]
+        covered++
       }
-      const o = (y * size + x) * 3
-      for (let c = 0; c < 3; c++) out[o + c] = Math.round(sum[c] / (k * k))
+      const o = (y * size + x) * ch
+      for (let c = 0; c < 3; c++) out[o + c] = covered ? Math.round(sum[c] / covered) : 0
+      if (ch === 4) out[o + 3] = Math.round(255 * covered / (k * k))
     }
   }
-  return png(size, size, out, 3)
+  return png(size, size, out, ch)
 }
 
 // --- PNG, the bare minimum: IHDR, one IDAT, IEND; filter 0 on every row ---
@@ -188,7 +194,7 @@ const chunk = (type, data) => {
   const crc = Buffer.alloc(4); crc.writeUInt32BE(crc32(body))
   return Buffer.concat([len, body, crc])
 }
-function png(w, h, pixels, ch) {
+export function png(w, h, pixels, ch) {
   const ihdr = Buffer.alloc(13)
   ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4)
   ihdr[8] = 8; ihdr[9] = ch === 4 ? 6 : 2   // 8 bit, RGBA or RGB
@@ -203,7 +209,7 @@ export function pngInfo(buf) {
 }
 
 const svgOf = (v, rects) => `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 512 512">
-  <!-- openGym app icon "${v.id}", written by scripts/app-icons.mjs (the glyph of resources/icon.svg). -->
+  <!-- openGym app icon "${v.id}", written by scripts/app-icons.mjs (the retained dumbbell glyph). -->
   <rect width="512" height="512" fill="${v.bg}"/>
   <g fill="${v.fg}">
 ${rects.map(([x, y, w, h]) => `    <rect x="${x}" y="${y}" width="${w}" height="${h}"/>`).join('\n')}

@@ -1,0 +1,19 @@
+.measurement-unit-choice { margin: 16px 0 24px; }
+.measurement-unit-choice > p { margin: 0 0 9px; color: var(--label-2); font-size: 12px; font-weight: 600; }
+.measurement-unit-choice .seg button { min-height: 58px; padding: 9px 12px; }
+.measurement-unit-choice .seg button > span { display: flex; flex-direction: column; gap: 3px; line-height: 1.3; }
+.measurement-unit-choice b { font-size: 13px; font-weight: 650; }
+.measurement-unit-choice small { font-size: 10px; font-weight: 500; opacity: .8; }
+.height-imperial-fields { display: flex; align-items: center; gap: 12px; }
+.height-imperial-fields label { display: grid; gap: 4px; justify-items: end; }
+.height-imperial-fields label > span { color: var(--label-2); font-size: 10px; }
+.height-imperial-fields input { width: 66px; min-height: 44px; text-align: right; }
+.workout-has-unit { position: relative; padding-inline-end: 42px; }
+.workout-unit-button { position: absolute; inset-inline-end: -3px; top: 50%; transform: translateY(-50%); display: inline-flex; justify-content: center; align-items: center; gap: 3px; width: 44px; height: 44px; color: var(--acc); font-size: 12px; font-weight: 700; border-radius: 12px; }
+.workout-unit-button .icn { width: 10px; height: 10px; }
+.weight-units-heading { display: flex; align-items: center; gap: 10px; }
+.weight-units-heading h3 { margin: 0; flex: 1; }
+.weight-units-heading .iconbtn { width: 44px; height: 44px; }
+.exercise-weight-units > p { margin: 14px 0 20px; color: var(--label-2); font-size: 13px; line-height: 1.6; }
+.exercise-weight-units > .btn { justify-content: space-between; width: 100%; min-height: 58px; margin-top: 10px; padding-inline: 16px; }
+.exercise-weight-units > .btn.unit-selected { color: var(--acc); border-color: var(--acc-line); background: var(--acc-soft); }

@@ -12,12 +12,13 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true
    same proof step adding a passkey uses. The API is a stand-in; what each form sends, and what it
    says back in the UI language, is the point. */
 const mocks = vi.hoisted(() => {
-  const state = { webauthn: true, hasData: false, sheets: [], answers: {}, calls: [] }
+  const state = { webauthn: true, hasData: false, sheets: [], answers: {}, calls: [], unit: 'kg' }
   state.toast = vi.fn()
   state.setUser = vi.fn()
   state.adoptProfile = vi.fn(async () => ({}))
   state.pushState = vi.fn(async () => {})
   state.pullState = vi.fn(async () => {})
+  state.setUnit = vi.fn(async unit => { state.unit = unit })
   state.passwordLogin = vi.fn()
   state.passwordRegister = vi.fn()
   state.passwordResetRedeem = vi.fn()
@@ -29,7 +30,7 @@ const mocks = vi.hoisted(() => {
     return a ?? {}
   })
   state.snapshot = () => ({
-    S: {}, config: { password_login: true },
+    S: { unit: state.unit }, config: { password_login: true }, setUnit: state.setUnit,
     setUser: state.setUser, adoptProfile: state.adoptProfile, pushState: state.pushState, pullState: state.pullState,
   })
   return state
@@ -80,6 +81,7 @@ const alertText = host => host.querySelector('[role="alert"]')?.textContent || n
 const click = async (host, text) => { act(() => button(host, text).click()); await settle() }
 
 beforeEach(() => {
+  mocks.unit = 'kg'; mocks.setUnit.mockClear()
   mocks.webauthn = true
   mocks.hasData = false
   mocks.sheets.length = 0
@@ -106,6 +108,24 @@ describe('passwordError', () => {
 })
 
 describe('PasswordSignInSheet', () => {
+  it('keeps fields labelled and lets a password be revealed without submitting or losing its value', async () => {
+    const host = mount(<PasswordSignInSheet close={() => {}} />)
+    const name = byPlaceholder(host, 'Name or e-mail')
+    const pw = byPlaceholder(host, 'Password')
+    expect(host.querySelector(`label[for="${name.id}"]`).textContent).toBe('Name or e-mail')
+    expect(host.querySelector(`label[for="${pw.id}"]`).textContent).toBe('Password')
+    type(pw, 'a private test passphrase')
+    await click(host, 'Show')
+    expect(pw.type).toBe('text')
+    expect(pw.value).toBe('a private test passphrase')
+    expect(pw.getAttribute('autocomplete')).toBe('current-password')
+    expect(host.querySelector('[aria-label="Hide password"]').getAttribute('aria-pressed')).toBe('true')
+    expect(mocks.passwordLogin).not.toHaveBeenCalled()
+    await click(host, 'Hide')
+    expect(pw.type).toBe('password')
+    expect(pw.value).toBe('a private test passphrase')
+  })
+
   it('signs in with the name and password, then carries on like a passkey sign-in', async () => {
     mocks.passwordLogin.mockResolvedValue({ id: 'u1', name: 'Ana' })
     const close = vi.fn()
@@ -164,7 +184,7 @@ describe('PasswordSignInSheet', () => {
   it('the one field takes an e-mail as well as a name, long enough for either, and sends it as typed', async () => {
     mocks.passwordLogin.mockResolvedValue({ id: 'u1', name: 'Ana' })
     const host = mount(<PasswordSignInSheet close={() => {}} />)
-    expect(host.textContent).toContain('Use your profile name (or the e-mail you added to it) and your password.')
+    expect(host.textContent).toContain('Use your profile name or e-mail to keep going.')
     const field = byPlaceholder(host, 'Name or e-mail')
     // Not type="email": that would refuse a plain name.
     expect(field.type).toBe('text')
@@ -204,10 +224,10 @@ describe('PasswordSignInSheet', () => {
 })
 
 describe('PasswordRegisterForm', () => {
-  function Harness({ inviteOnly }) {
+  function Harness({ inviteOnly, preferredUnit }) {
     const [name, setName] = React.useState('')
     const [code, setCode] = React.useState('')
-    return <PasswordRegisterForm close={() => {}} inviteOnly={inviteOnly} name={name} setName={setName} code={code} setCode={setCode} />
+    return <PasswordRegisterForm close={() => {}} inviteOnly={inviteOnly} name={name} setName={setName} code={code} setCode={setCode} preferredUnit={preferredUnit} />
   }
   it('checks the invite and the repeated password here, then creates the profile', async () => {
     mocks.passwordRegister.mockResolvedValue({ id: 'u9', name: 'Cleo' })
@@ -228,6 +248,19 @@ describe('PasswordRegisterForm', () => {
     expect(mocks.setUser).toHaveBeenCalledWith({ id: 'u9', name: 'Cleo' })
     expect(mocks.pullState).toHaveBeenCalled()
     expect(mocks.toast).toHaveBeenCalledWith('Welcome, Cleo')
+  })
+
+  it('applies the chosen imperial units after loading the newly created profile', async () => {
+    mocks.passwordRegister.mockResolvedValue({ id: 'units-user', name: 'Cleo' })
+    const host = mount(<Harness preferredUnit="lb" />)
+    type(byPlaceholder(host, 'Your name'), 'Cleo')
+    type(byPlaceholder(host, 'Password'), 'correct horse battery')
+    type(byPlaceholder(host, 'Repeat the password'), 'correct horse battery')
+    await submit(host)
+    expect(mocks.pullState).toHaveBeenCalled()
+    expect(mocks.setUnit).toHaveBeenCalledWith('lb', { convert: true })
+    expect(mocks.pullState.mock.invocationCallOrder.at(-1)).toBeLessThan(mocks.setUnit.mock.invocationCallOrder.at(-1))
+    expect(mocks.unit).toBe('lb')
   })
 
   it('takes an optional e-mail, checks its shape here, and says when another profile has it', async () => {

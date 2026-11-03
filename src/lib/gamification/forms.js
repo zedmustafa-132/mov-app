@@ -61,7 +61,7 @@ export const FORMS = [
   {
     tier: 8,
     minLevel: 80,
-    name: 'Form VIII: NXT FORM',
+    name: 'Form VIII: MOV',
     subtitle: 'The Ultimate',
     icon: 'sparkles',
     desc: 'The final evolution. Mind, body, and habit united in perpetual peak state.'

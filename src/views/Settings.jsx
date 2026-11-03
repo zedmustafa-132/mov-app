@@ -869,19 +869,19 @@ export default function Settings({ page = null, find = null, via = null, entryKe
         </Row>
       </Section>
       {/* Halloween and whatever comes after it (lib/seasonal.js), on a page of their own. */}
-      <Section>
+      {THEMES.length > 0 && <Section>
         <Row icon="pumpkin" iconTint="var(--orange)" title={t('Seasonal themes')} subtitle={t('Little extras for the time of year.')}
           value={activeSeasonTitle(S)} accessory="chevron" onClick={() => open('themes')} />
-      </Section>
-      <Section title={t('On Home')}>
+      </Section>}
+      <Section title={t('Detailed overview')}>
         {/* Membership QR codes on Home (views/CheckIn.jsx); off = no Home card, no route. */}
         <Row icon="qr" iconTint="var(--blue)" title={t('Gym check-in')}
-          subtitle={t('Show a card on Home with your membership QR codes.')}>
+          subtitle={t('Show your membership QR codes in the detailed overview.')}>
           <Switch checked={S.checkIn !== false} onChange={v => update(s => { s.checkIn = v })} />
         </Row>
         {/* The Home summary is optional; hiding it leaves weight logging, history and Stats intact. */}
         <Row icon="scale" iconTint="var(--green)" title={t('Body weight')}
-          subtitle={t('Show the body weight card on Home.')}>
+          subtitle={t('Show body weight in the detailed overview.')}>
           <Switch checked={S.showWeightCard !== false} onChange={v => update(s => { s.showWeightCard = v })} />
         </Row>
         {/* The bar at the top that says the app is offline, kept local, or not synced (#369, #330).
@@ -897,6 +897,7 @@ export default function Settings({ page = null, find = null, via = null, entryKe
     // One section per seasonal theme (lib/seasonal.js). Auto shows it in its weeks; On keeps it
     // all year, Off never. Synced like the rest of Look; once-a-day surprises stay per device.
     themes: () => <>
+      {!THEMES.length && <div className="card"><h2>{t('Your everyday look, all year round.')}</h2><p className="small muted">{t('Seasonal themes aren’t available in this version. You can change your colours in Appearance.')}</p></div>}
       {THEMES.map(th => {
         const choice = seasonChoice(S, th.id)
         const set = (k, v) => update(s => { s.seasonal = { ...(s.seasonal || {}), [k]: v } })
@@ -968,7 +969,7 @@ export default function Settings({ page = null, find = null, via = null, entryKe
           release is newer (checksum verified, see onUpdateRowClick). On the web the app updates
           with its server, so the row points at the APK for the phone instead. iOS and the Google
           Play build are updated by their store. */}
-      <Section footer={MOBILE ? (selfUpdate ? t('Releases are checked on GitHub. The download is verified against its checksum before the installer opens.') : null) : t('The web app updates together with your server. The Android app installs its own updates from here.')}>
+      <Section footer={MOBILE ? (selfUpdate ? t('Releases are checked on GitHub. The download is verified against its checksum before the installer opens.') : null) : t('MOV updates together with your server. You’re using the web app.')}>
         {/* The sideloaded APK comes in three kinds that differ only in the animations built in
             (lib/apk-variant.js): which one this is, so nobody has to guess from the file size. */}
         <Row icon="info" iconTint="var(--grey)" title={t('Version')} value={'v' + __APP_VERSION__}
@@ -979,13 +980,13 @@ export default function Settings({ page = null, find = null, via = null, entryKe
               subtitle={checking ? t('Checking…') : t('You have v{0}', __APP_VERSION__)}
               accessory="chevron"
               onClick={() => (updateInfo?.hasUpdate ? onUpdateRowClick() : checkNow())} />
-          : <Row icon="download" iconTint="var(--green)" title={t('Get the Android app')}
-              subtitle={t('Download the APK from opengym.ch')} accessory="chevron"
+          : <Row icon="download" iconTint="var(--green)" title={t('Original openGym app')}
+              subtitle={t('Explore the upstream project. This is separate from MOV.')} accessory="chevron"
               onClick={() => window.open('https://opengym.ch/#download', '_blank', 'noopener')} />}
       </Section>
       {/* Support: the project's own donation pages, and on the iPhone a straight line to writing a
           review. Plain links, no pop-up asking for anything (App Store 5.6.1). */}
-      <Section title={t('Support openGym')} footer={t('openGym is free: no ads, no subscriptions, no tracking. A coffee keeps it that way.')}>
+      <Section title={t('Built on openGym')} footer={t('MOV uses openGym’s open source workout engine. These links support the original project.')}>
         {MOBILE && ios && <Row icon="star" iconTint="var(--orange)" title={t('Rate openGym on the App Store')} accessory="chevron"
           onClick={() => window.open('https://apps.apple.com/app/id6822275400?action=write-review', '_blank', 'noopener')} />}
         <Row icon="heart" iconTint="var(--pink)" title={t('Buy me a coffee')} subtitle="Buy Me a Coffee" accessory="chevron"
@@ -1001,20 +1002,20 @@ export default function Settings({ page = null, find = null, via = null, entryKe
       {!MOBILE && !standalone() && <Section title={t('Tip')}>
         <Row icon="share" iconTint="var(--blue)"
           title={IS_ANDROID ? t('In Chrome: ⋮ menu → Add to Home screen') : APPLE_UA ? t('In Safari: Share → Add to Home Screen') : t('In Chrome or Edge: the install icon in the address bar')}
-          subtitle={t('to install openGym as a full-screen app.') + ' ' + (user ? t('Your data syncs with your profile. Sign in anywhere and it’s there.') : t('Guest data stays on this device, so export a backup now and then!'))} />
+          subtitle={t('to install MOV as a full-screen app.') + ' ' + (user ? t('Your data syncs with your profile. Sign in anywhere and it’s there.') : t('Guest data stays on this device, so export a backup now and then!'))} />
       </Section>}
       {/* The version, where the support template tells people to look for it. On the phone
           build there is no address bar and no about box, so without this there is no way to tell
           which build you are running, or whether an update actually installed. */}
       <Section title={t('Privacy & Feedback')}>
-        <Row icon="shield" iconTint="var(--teal)" title={t('Privacy Policy')} subtitle={t('PIPEDA, Quebec Law 25 & GDPR compliant')} accessory="chevron"
+        <Row icon="shield" iconTint="var(--teal)" title={t('Upstream privacy reference')} subtitle={t('Read openGym’s privacy documentation')} accessory="chevron"
           onClick={() => window.open('https://github.com/DuarteSantos8/openGym/blob/master/docs/PRIVACY_POLICY.md', '_blank', 'noopener')} />
         <Row icon="envelope" iconTint="var(--blue)" title={t('Send feedback')} subtitle={t('Bug reports, suggestions and questions')} accessory="chevron"
-          onClick={() => window.open('mailto:feedback@nxtform.com?subject=NXT%20FORM%20Feedback', '_blank')} />
+          onClick={() => window.open('mailto:feedback@mov.app?subject=MOV%20Feedback', '_blank')} />
       </Section>
 
       <div className="dim small sp-version" style={{ lineHeight: 1.6 }}>
-        <strong>NXT FORM</strong> v{__APP_VERSION__} · {t('free & open source (AGPL v3)')}<br />
+        <strong>MOV</strong> v{__APP_VERSION__} · {t('free & open source (AGPL v3)')}<br />
         <a href="https://github.com/DuarteSantos8/openGym" target="_blank" rel="noopener">{t('Upstream openGym repository (AGPL v3)')}</a><br />
         <div style={{ marginTop: 8, fontSize: '0.88em' }}>
           <strong>{t('Attributions & Data Rights')}:</strong><br />
@@ -1166,8 +1167,13 @@ function SettingsRoot({ ctx, preview, open, user, sync, home, go, entryKey }) {
           <Icon name="chevronRight" className="lrow-c" />
         </button>
       </Section>
+      <Section>
+        <Row icon="sparkles" iconTint="var(--orange)" title={t('Personal plan & daily targets')} subtitle={t('Personalize workouts, calories and water goals')} accessory="chevron" onClick={() => nav('/setup')} />
+      </Section>
       {ROOT_GROUPS.map(g => g.filter(id => pageVisible(id, ctx))).filter(g => g.length).map(g => (
-        <Section key={g[0]}>
+        <details className="settings-group" key={g[0]}>
+          <summary>{t(g[0] === 'workout' ? 'Workout & alerts' : g[0] === 'plan' ? 'Training preferences' : g[0] === 'look' ? 'Appearance & coaching' : 'Data & about')}<Icon name="chevronDown" /></summary>
+        <Section>
           {g.map(id => <Row key={id} icon={PAGES[id].icon} iconTint={PAGES[id].tint} title={t(PAGES[id].title)}
             value={preview[id]?.() || null} accessory="chevron" onClick={() => open(id)} className="sp-root-row" />)}
           {/* The phone app sets up its own Coach on the Coach page beside Look; in a hosted app the
@@ -1176,8 +1182,9 @@ function SettingsRoot({ ctx, preview, open, user, sync, home, go, entryKey }) {
           {g[0] === 'look' && adminCoach && <Row icon={PAGES.coach.icon} iconTint={PAGES.coach.tint} title={t(PAGES.coach.title)}
             value={t('Admin')} accessory="chevron" onClick={() => nav('/admin', { state: { section: 'coach' } })} className="sp-root-row" />}
         </Section>
+        </details>
       ))}
-      <div className="dim small sp-version">openGym v{__APP_VERSION__}</div>
+      <div className="dim small sp-version">MOV v{__APP_VERSION__}</div>
     </>}
   </div>
 }
@@ -1421,7 +1428,7 @@ function activeSeasonTitle(S) {
 
 function accentLabel(S) {
   const k = accentKey(S)
-  return k === CUSTOM ? t('Your own color') : t(ACCENT_NAMES[k] || 'Green')
+  return k === CUSTOM ? t('Your own color') : t(k === 'lime' ? 'MOV orange' : ACCENT_NAMES[k] || 'MOV orange')
 }
 
 /**

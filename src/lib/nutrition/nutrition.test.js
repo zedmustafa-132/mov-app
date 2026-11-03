@@ -32,6 +32,13 @@ describe('Nutrition Core — portions.js', () => {
     expect(res.nutrients.proteinG).toBe(12.6)
   })
 
+  it('uses the food’s default portion when logging a count of servings', () => {
+    const res = scaleNutrients(eggFood, 2, 'serving')
+    expect(res.weightGrams).toBe(100)
+    expect(res.nutrients.kcal).toBe(143)
+    expect(res.nutrients.proteinG).toBe(12.6)
+  })
+
   it('handles zero quantity safely', () => {
     const res = scaleNutrients(eggFood, 0, 'g')
     expect(res.nutrients.kcal).toBe(0)

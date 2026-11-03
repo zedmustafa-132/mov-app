@@ -96,7 +96,7 @@ export function statusOf(S, now = new Date()) {
     quietOn: S && excusedOn(S, today) ? today : '',
     activeSince,
     title: t('Gym spotted'),
-    body: t('Ready for your workout? 💪'),
+    body: t('Ready for your workout?'),
     // Android's name for the notification channel, in the app's language.
     channel: t('Gym reminder'),
     // Android: the quiet notification while it checks with live location near a gym.

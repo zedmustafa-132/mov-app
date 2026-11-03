@@ -10,6 +10,9 @@ import { startNativeKeyboard } from './lib/native-keyboard.js'
 import './admin.css'
 import './coach.css'
 import './index.css'
+import './mov.css'
+import './modern.css'
+import './welcome.css'
 import { hideBoot, handOverFromLaunchScreen } from './lib/boot.js'
 
 // App.jsx restores per-route scroll itself; the browser's own attempt races it.

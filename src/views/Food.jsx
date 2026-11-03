@@ -11,8 +11,10 @@ import { BarcodeScannerModal } from '../components/BarcodeScannerModal.jsx'
 import { PhotoEstimateSheet } from '../components/PhotoEstimateSheet.jsx'
 import { Button } from '../components/ui.jsx'
 import Icon from '../components/Icon.jsx'
+import { ProgressRing } from '../components/DailyVisuals.jsx'
 import { t, dateLocale } from '../lib/i18n.js'
 import { getActiveTargets } from '../lib/targets.js'
+import { foodForEntry } from '../lib/nutrition/portions.js'
 
 export default function Food() {
   const S = useStore(s => s.S)
@@ -20,6 +22,8 @@ export default function Food() {
   const toast = useUI(s => s.toast)
 
   const days = useNutrition(s => s.days)
+  const nutritionAccount = useNutrition(s => s.accountId)
+  const nutritionSync = useNutrition(s => s.syncStatus)
   const selectedDate = useNutrition(s => s.selectedDate || getLocalDateString())
   const setSelectedDate = useNutrition(s => s.setSelectedDate)
   const deleteFood = useNutrition(s => s.deleteFood)
@@ -49,7 +53,6 @@ export default function Food() {
   const waterTarget = activeTargets.waterMl
 
   const remainingCalories = calorieTarget - totals.calories
-  const caloriePct = Math.min(100, Math.round((totals.calories / calorieTarget) * 100))
 
   // Date navigation helpers
   const shiftDate = (deltaDays) => {
@@ -82,14 +85,14 @@ export default function Food() {
       <PortionEditSheet
         entry={entry}
         onSave={updated => {
-          updateEntryPortion(selectedDate, entry.id, entry, updated.qty, updated.unit)
+          updateEntryPortion(selectedDate, entry.id, updated.foodRef, updated.qty, updated.unit, updated.meal)
           toast(t('Portion updated'))
         }}
         onDelete={() => {
           deleteFood(selectedDate, entry.id)
           toast(t('Food deleted'), {
             action: t('Undo'),
-            onAction: () => logFood(selectedDate, entry.meal, entry, entry.qty, entry.unit)
+            onAction: () => logFood(selectedDate, entry.meal, foodForEntry(entry), entry.qty, entry.unit)
           })
         }}
         close={close}
@@ -133,202 +136,71 @@ export default function Food() {
     { key: 'snacks', title: t('Snacks'), icon: 'sparkles' }
   ]
 
+  // Calculate 5 days centered on selectedDate
+  const daysWindow = useMemo(() => {
+    const parts = selectedDate.split('-').map(Number);
+    const center = new Date(parts[0], parts[1] - 1, parts[2]);
+    const arr = [];
+    for (let i = -2; i <= 2; i++) {
+      const d = new Date(center);
+      d.setDate(center.getDate() + i);
+      const iso = getLocalDateString(d);
+      const dayName = d.toLocaleDateString(dateLocale(), { weekday: 'short' });
+      const dayNum = d.getDate();
+      arr.push({ iso, dayName, dayNum, isSelected: iso === selectedDate });
+    }
+    return arr;
+  }, [selectedDate]);
+
+  const protPct = Math.min(100, Math.round((totals.protein / proteinTarget) * 100));
+  const carbPct = Math.min(100, Math.round((totals.carbs / carbTarget) * 100));
+  const fatPct = Math.min(100, Math.round((totals.fat / fatTarget) * 100));
+
   return (
-    <div className="narrow food-view">
-      {/* Header with Date Navigator */}
-      <div className="hdr">
-        <div>
-          <h1>{t('Nutrition')}</h1>
-          <div className="row" style={{ gap: 8, alignItems: 'center', marginTop: 2 }}>
-            <button
-              className="iconbtn"
-              style={{ width: 28, height: 28, fontSize: 13 }}
-              onClick={() => shiftDate(-1)}
-              aria-label={t('Previous day')}
-            >
-              <Icon name="chevronLeft" />
-            </button>
-
-            <span className="sub" style={{ fontWeight: 600 }}>{formattedDate}</span>
-
-            <button
-              className="iconbtn"
-              style={{ width: 28, height: 28, fontSize: 13 }}
-              onClick={() => shiftDate(1)}
-              aria-label={t('Next day')}
-            >
-              <Icon name="chevronRight" />
-            </button>
-
-            {!isToday && (
-              <Button size="xs" variant="tinted" onClick={() => setSelectedDate(todayStr)}>
-                {t('Today')}
-              </Button>
-            )}
+    <div className="narrow food-view s-food" style={{ paddingBottom: 24 }}>
+      <header className="food-header">
+        <div><h1>{t('Food diary')}</h1><p>{formattedDate} · {t('Fuel your next move.')}</p></div>
+        <div className="food-header-actions">
+          <button className="ib" onClick={handleOpenBarcodeScanner} aria-label={t('Barcode Scanner')}><Icon name="barcode" /></button>
+          <button className="ib" onClick={handleOpenPhotoEstimator} aria-label={t('Photo Estimate')}><Icon name="camera" /></button>
+        </div>
+      </header>
+      {nutritionAccount && nutritionSync?.error && <p className="small muted" role="status">{t(nutritionSync.error)} <button className="meal-text-button" onClick={() => useNutrition.getState().syncNow({ refresh: true })}>{t('Retry sync')}</button></p>}
+      <label className="simple-date">{t('Date')}<input type="date" className="field" aria-label={t('Diary date')} value={selectedDate} onChange={e => { if (e.target.value) setSelectedDate(e.target.value) }} /></label>
+      <section className="card diary-nutrition" aria-label={t('Daily nutrition')}>
+        <div className="calorie-heading">
+          <div><div className="k">{remainingCalories >= 0 ? t('Calories remaining') : t('Above your target')}</div>
+            <strong>{Math.abs(remainingCalories).toLocaleString()} <small>kcal</small></strong>
+            <div className="calorie-total">{t('{0} eaten', totals.calories.toLocaleString())} <span> / {calorieTarget.toLocaleString()} kcal</span></div>
           </div>
+          <ProgressRing label={t('Daily calories')} value={totals.calories} target={calorieTarget}><Icon name="questFuel" /></ProgressRing>
         </div>
-
-        <div className="hdr-actions" style={{ display: 'flex', gap: 6 }}>
-          <button className="iconbtn" onClick={handleOpenPhotoEstimator} aria-label={t('Photo Estimate')} title={t('Photo Estimate')}>
-            <Icon name="camera" />
-          </button>
-          <button className="iconbtn" onClick={handleOpenRecipes} aria-label={t('Recipes')} title={t('Recipes')}>
-            <Icon name="clipboard" />
-          </button>
-          <button className="iconbtn" onClick={handleOpenCustom} aria-label={t('Custom Food')} title={t('Custom Food')}>
-            <Icon name="plus" />
-          </button>
+        <details className="simple-macros"><summary>{t("Nutrition details")}<Icon name="chevronDown" /></summary><div className="macro-grid">
+          {[
+            { label: t('Protein'), value: totals.protein, target: proteinTarget, pct: protPct, color: 'var(--orange)' },
+            { label: t('Carbs'), value: totals.carbs, target: carbTarget, pct: carbPct, color: 'var(--amber)' },
+            { label: t('Fat'), value: totals.fat, target: fatTarget, pct: fatPct, color: 'var(--blue)' }
+          ].map(m => <div key={m.label}>
+            <div className="macro-label">{m.label}</div>
+            <div className="macro-value">{Math.round(m.value)}<small> / {m.target} g</small></div>
+            <div className="progress-track" role="progressbar" aria-label={m.label} aria-valuemin={0} aria-valuemax={m.target} aria-valuenow={Math.min(m.target, m.value)}><span style={{ width: `${m.pct}%`, background: m.color }} /></div>
+          </div>)}
         </div>
-      </div>
-
-      {/* Main Calories & Macros Summary Card */}
-      <div className="card">
-        <div className="row between" style={{ alignItems: 'baseline', marginBottom: 8 }}>
-          <div>
-            <div className="lbl2">{t('Calories')}</div>
-            <div className="big" style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-0.02em' }}>
-              {remainingCalories >= 0 ? remainingCalories : Math.abs(remainingCalories)}
-              <span className="small muted" style={{ fontSize: 14, fontWeight: 500, marginInlineStart: 6 }}>
-                {remainingCalories >= 0 ? t('remaining') : t('over target')}
-              </span>
-            </div>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <span className="small muted">{t('{0} / {1} kcal', totals.calories, calorieTarget)}</span>
-          </div>
-        </div>
-
-        {/* Calorie Progress Bar */}
-        <div style={{
-          width: '100%',
-          height: 10,
-          background: 'var(--surface-3)',
-          borderRadius: 5,
-          overflow: 'hidden',
-          marginBottom: 16
-        }}>
-          <div style={{
-            height: '100%',
-            width: `${caloriePct}%`,
-            background: remainingCalories >= 0 ? 'var(--acc)' : 'var(--orange)',
-            borderRadius: 5,
-            transition: 'width 200ms ease'
-          }} />
-        </div>
-
-        {/* 3 Macro Pillars */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-          {/* Protein */}
-          <div style={{ background: 'var(--surface-2)', padding: '10px 8px', borderRadius: 'var(--r-sm)' }}>
-            <div className="row between" style={{ marginBottom: 4 }}>
-              <span className="small" style={{ fontWeight: 600, color: 'var(--blue)' }}>{t('Protein')}</span>
-              <span className="small muted">{totals.protein}g</span>
-            </div>
-            <div style={{ width: '100%', height: 6, background: 'var(--surface-3)', borderRadius: 3, overflow: 'hidden' }}>
-              <div style={{
-                height: '100%',
-                width: `${Math.min(100, Math.round((totals.protein / proteinTarget) * 100))}%`,
-                background: 'var(--blue)',
-                borderRadius: 3
-              }} />
-            </div>
-            <div className="dim small" style={{ marginTop: 4, fontSize: 11 }}>{t('Target: {0}g', proteinTarget)}</div>
-          </div>
-
-          {/* Carbs */}
-          <div style={{ background: 'var(--surface-2)', padding: '10px 8px', borderRadius: 'var(--r-sm)' }}>
-            <div className="row between" style={{ marginBottom: 4 }}>
-              <span className="small" style={{ fontWeight: 600, color: 'var(--orange)' }}>{t('Carbs')}</span>
-              <span className="small muted">{totals.carbs}g</span>
-            </div>
-            <div style={{ width: '100%', height: 6, background: 'var(--surface-3)', borderRadius: 3, overflow: 'hidden' }}>
-              <div style={{
-                height: '100%',
-                width: `${Math.min(100, Math.round((totals.carbs / carbTarget) * 100))}%`,
-                background: 'var(--orange)',
-                borderRadius: 3
-              }} />
-            </div>
-            <div className="dim small" style={{ marginTop: 4, fontSize: 11 }}>{t('Target: {0}g', carbTarget)}</div>
-          </div>
-
-          {/* Fat */}
-          <div style={{ background: 'var(--surface-2)', padding: '10px 8px', borderRadius: 'var(--r-sm)' }}>
-            <div className="row between" style={{ marginBottom: 4 }}>
-              <span className="small" style={{ fontWeight: 600, color: 'var(--yellow)' }}>{t('Fat')}</span>
-              <span className="small muted">{totals.fat}g</span>
-            </div>
-            <div style={{ width: '100%', height: 6, background: 'var(--surface-3)', borderRadius: 3, overflow: 'hidden' }}>
-              <div style={{
-                height: '100%',
-                width: `${Math.min(100, Math.round((totals.fat / fatTarget) * 100))}%`,
-                background: 'var(--yellow)',
-                borderRadius: 3
-              }} />
-            </div>
-            <div className="dim small" style={{ marginTop: 4, fontSize: 11 }}>{t('Target: {0}g', fatTarget)}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Water Tracker Card */}
-      <div className="card">
-        <div className="row between" style={{ marginBottom: 8 }}>
-          <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-            <span className="lrow-i" style={{ background: 'var(--teal)', color: '#000', width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Icon name="drop" style={{ fontSize: 16 }} />
-            </span>
-            <span style={{ fontWeight: 600 }}>{t('Water Intake')}</span>
-          </div>
-          <span className="small muted">{dayData.waterMl || 0} / {waterTarget} ml</span>
-        </div>
-
-        {/* Water fill bar */}
-        <div style={{
-          width: '100%',
-          height: 8,
-          background: 'var(--surface-3)',
-          borderRadius: 4,
-          overflow: 'hidden',
-          marginBottom: 10
-        }}>
-          <div style={{
-            height: '100%',
-            width: `${Math.min(100, Math.round(((dayData.waterMl || 0) / waterTarget) * 100))}%`,
-            background: 'var(--teal)',
-            borderRadius: 4,
-            transition: 'width 200ms ease'
-          }} />
-        </div>
-
-        {/* Quick Water Buttons */}
-        <div className="row between" style={{ gap: 6 }}>
-          <Button size="xs" variant="ghost" onClick={() => addWater(selectedDate, -250)}>
-            -250 ml
-          </Button>
-          <Button size="xs" variant="tinted" onClick={() => addWater(selectedDate, 250)}>
-            +250 ml
-          </Button>
-          <Button size="xs" variant="tinted" onClick={() => addWater(selectedDate, 500)}>
-            +500 ml
-          </Button>
-          <Button size="xs" variant="tinted" onClick={() => addWater(selectedDate, 1000)}>
-            +1 L
-          </Button>
-        </div>
-      </div>
+        </details>
+      </section>
 
       {/* Meals Diary */}
       {mealSections.map(({ key, title, icon }) => {
         const mealEntries = (dayData.entries || []).filter(e => e.meal === key)
-        const mealCalories = mealEntries.reduce((sum, e) => sum + (e.nutrients?.calories || 0), 0)
-        const mealProtein = Math.round(mealEntries.reduce((sum, e) => sum + (e.nutrients?.protein || 0), 0) * 10) / 10
+        const mealTotals = computeDayTotals(mealEntries)
+        const mealCalories = mealTotals.kcal
+        const mealProtein = mealTotals.proteinG
 
         return (
-          <div key={key} className="card" style={{ marginBottom: 12 }}>
+          <div key={key} className="card meal-card" style={{ marginBottom: 12 }}>
             <div className="row between" style={{ marginBottom: mealEntries.length ? 10 : 4 }}>
               <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-                <span className="lrow-i" style={{ background: 'var(--surface-3)', width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span className={`meal-icon meal-icon-${key}`}>
                   <Icon name={icon} style={{ fontSize: 15 }} />
                 </span>
                 <div>
@@ -353,6 +225,9 @@ export default function Food() {
                   <div
                     key={entry.id}
                     className="row between tappable"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={t('Edit {0}', entry.name)}
                     style={{
                       padding: '8px 10px',
                       background: 'var(--surface-2)',
@@ -360,6 +235,7 @@ export default function Food() {
                       cursor: 'pointer'
                     }}
                     onClick={() => handleOpenPortionEdit(entry)}
+                    onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); handleOpenPortionEdit(entry) } }}
                   >
                     <div style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
                       <div style={{ fontWeight: 500, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -372,27 +248,39 @@ export default function Food() {
                     </div>
 
                     <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <div style={{ fontWeight: 600, fontSize: 14 }}>{entry.nutrients?.calories || 0} kcal</div>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>{entry.nutrients?.kcal ?? entry.nutrients?.calories ?? 0} kcal</div>
                       <div className="small muted" style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                        <span style={{ color: 'var(--blue)' }}>P:{entry.nutrients?.protein || 0}</span>
-                        <span style={{ color: 'var(--orange)' }}>C:{entry.nutrients?.carbs || 0}</span>
-                        <span style={{ color: 'var(--yellow)' }}>F:{entry.nutrients?.fat || 0}</span>
+                        <span style={{ color: 'var(--blue)' }}>P:{entry.nutrients?.proteinG ?? entry.nutrients?.protein ?? 0}</span>
+                        <span style={{ color: 'var(--orange)' }}>C:{entry.nutrients?.carbsG ?? entry.nutrients?.carbs ?? 0}</span>
+                        <span style={{ color: 'var(--yellow)' }}>F:{entry.nutrients?.fatG ?? entry.nutrients?.fat ?? 0}</span>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="small muted" style={{ padding: '6px 2px' }}>
-                {t('No food logged yet.')}
-              </div>
+              null
             )}
           </div>
         )
       })}
 
+      <section className="card diary-water">
+        <div className="row between" style={{ marginBottom: 12 }}>
+          <div className="row"><Icon name="questWater" /><h2 style={{ margin: 0 }}>{t('Water')}</h2></div>
+          <span className="small muted">{((dayData.waterMl || 0) / 1000).toFixed(2).replace(/0$/, '')} / {(waterTarget / 1000).toFixed(1)} L</span>
+        </div>
+        <div className="progress-track"><span style={{ width: `${Math.min(100, ((dayData.waterMl || 0) / waterTarget) * 100)}%`, background: 'var(--blue)' }} /></div>
+        <div className="row" style={{ marginTop: 14 }}>
+          <Button size="sm" variant="tinted" icon="plus" onClick={() => addWater(selectedDate, 250)}>{t('250 ml')}</Button>
+          <Button size="sm" variant="tinted" icon="plus" onClick={() => addWater(selectedDate, 500)}>{t('500 ml')}</Button>
+        </div>
+      </section>
+
       {/* Quick Action Buttons */}
-      <div className="row" style={{ gap: 8, marginTop: 4, marginBottom: 20 }}>
+      <details className="food-more">
+        <summary>{t("More food tools")} <Icon name="chevronDown" /></summary>
+      <div className="food-tools">
         <Button size="sm" variant="tinted" icon="barcode" onClick={handleOpenBarcodeScanner} style={{ flex: 1 }}>
           {t('Barcode')}
         </Button>
@@ -406,6 +294,7 @@ export default function Food() {
           {t('Custom')}
         </Button>
       </div>
+      </details>
     </div>
   )
 }

@@ -39,4 +39,13 @@ describe('the weigh-in before a workout is a setting', () => {
     expect(active.bw).toBeNull()
     expect(active.routineIds).toEqual([])
   })
+
+  it('keeps an in-progress session when another start action is used', () => {
+    const active = { id: 'current', name: 'Today', start: 1000, entries: [{ id: '0025', sets: [{ w: 40, r: 8, done: true }] }] }
+    useStore.setState(s => ({ S: { ...s.S, active, weighIn: false } }))
+    act(() => startFlow([]))
+    expect(useStore.getState().S.active).toEqual(active)
+    expect(useUI.getState().sheets).toHaveLength(0)
+    expect(useUI.getState().toastMsg).toBe('Resume your current workout before starting another.')
+  })
 })

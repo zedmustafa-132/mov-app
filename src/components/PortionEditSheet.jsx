@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { scaleNutrients } from '../lib/nutrition/portions.js'
+import { scaleNutrients, foodForEntry } from '../lib/nutrition/portions.js'
 import { Button, NumberField, Segmented } from './ui.jsx'
 import Icon from './Icon.jsx'
 import { t } from '../lib/i18n.js'
@@ -9,38 +9,16 @@ export function PortionEditSheet({ entry, onSave, onDelete, close }) {
   const [unit, setUnit] = useState(entry.unit || 'g')
   const [meal, setMeal] = useState(entry.meal || 'lunch')
 
-  // Reconstruct food reference for scaling
-  const foodRef = useMemo(() => {
-    // If entry has weightGrams and nutrients, we can derive 100g base nutrients
-    const factor = entry.weightGrams ? 100 / entry.weightGrams : 1
-    return {
-      key: entry.foodKey,
-      name: entry.name,
-      brand: entry.brand,
-      nutrients: {
-        calories: Math.round((entry.nutrients?.calories || 0) * factor),
-        protein: Math.round((entry.nutrients?.protein || 0) * factor * 10) / 10,
-        carbs: Math.round((entry.nutrients?.carbs || 0) * factor * 10) / 10,
-        fat: Math.round((entry.nutrients?.fat || 0) * factor * 10) / 10,
-        fiber: Math.round((entry.nutrients?.fiber || 0) * factor * 10) / 10
-      },
-      portions: [
-        { label: '100g', grams: 100 },
-        { label: '1g', grams: 1 },
-        ...(entry.unit && entry.unit !== 'g' && entry.weightGrams ? [{
-          label: entry.unit,
-          grams: Math.round(entry.weightGrams / (entry.qty || 1))
-        }] : [])
-      ]
-    }
-  }, [entry])
+  const foodRef = useMemo(() => foodForEntry(entry), [entry])
 
   const scaled = useMemo(() => {
-    return scaleNutrients(foodRef, Number(qty) || 1, unit)
+    return scaleNutrients(foodRef, Number(qty) || 0, unit)
   }, [foodRef, qty, unit])
 
   const handleSave = () => {
+    if (!Number.isFinite(Number(qty)) || Number(qty) <= 0) return
     onSave({
+      foodRef,
       qty: Number(qty) || 1,
       unit,
       meal,
@@ -80,7 +58,7 @@ export function PortionEditSheet({ entry, onSave, onDelete, close }) {
       <div className="row" style={{ gap: 10 }}>
         <div style={{ flex: 1 }}>
           <label className="lbl2" style={{ marginBottom: 4, display: 'block' }}>{t('Amount')}</label>
-          <NumberField value={qty} onChange={setQty} decimal={true} autoFocus />
+          <NumberField value={qty} onChange={setQty} decimal={true} autoFocus aria-label={t('Amount')} />
         </div>
         <div style={{ flex: 1 }}>
           <label className="lbl2" style={{ marginBottom: 4, display: 'block' }}>{t('Unit')}</label>
@@ -102,13 +80,13 @@ export function PortionEditSheet({ entry, onSave, onDelete, close }) {
         <div className="row between" style={{ marginBottom: 6 }}>
           <span className="muted">{t('Calculated')}</span>
           <span className="big" style={{ fontSize: 18, fontWeight: 700 }}>
-            {scaled.nutrients.calories} <span className="small muted">kcal</span>
+            {scaled.nutrients.kcal} <span className="small muted">kcal</span>
           </span>
         </div>
         <div className="row between small">
-          <span><b style={{ color: 'var(--blue)' }}>P:</b> {scaled.nutrients.protein}g</span>
-          <span><b style={{ color: 'var(--orange)' }}>C:</b> {scaled.nutrients.carbs}g</span>
-          <span><b style={{ color: 'var(--yellow)' }}>F:</b> {scaled.nutrients.fat}g</span>
+          <span><b style={{ color: 'var(--blue)' }}>P:</b> {scaled.nutrients.proteinG}g</span>
+          <span><b style={{ color: 'var(--orange)' }}>C:</b> {scaled.nutrients.carbsG}g</span>
+          <span><b style={{ color: 'var(--yellow)' }}>F:</b> {scaled.nutrients.fatG}g</span>
           <span className="dim">{scaled.weightGrams}g</span>
         </div>
       </div>
@@ -117,7 +95,7 @@ export function PortionEditSheet({ entry, onSave, onDelete, close }) {
         <Button variant="danger" icon="trash" onClick={handleDelete} style={{ flex: 1 }}>
           {t('Delete')}
         </Button>
-        <Button variant="primary" icon="check" onClick={handleSave} style={{ flex: 2 }}>
+        <Button variant="primary" icon="check" onClick={handleSave} disabled={!Number.isFinite(Number(qty)) || Number(qty) <= 0} style={{ flex: 2 }}>
           {t('Save Changes')}
         </Button>
       </div>

@@ -1,0 +1,60 @@
+/* Plan creation keeps the next useful action visible; detailed training controls stay available. */
+.plan-builder-actions { margin: 0 0 22px; }
+.plan-builder-actions.is-empty { padding: 20px; background: var(--surface); border: 1px solid var(--sep-op); border-radius: 24px; }
+.plan-builder-intro { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 20px; }
+.plan-builder-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 13px; flex: none; background: var(--acc-soft); color: var(--acc); }
+.plan-builder-icon .icn { width: 22px; height: 22px; }
+.plan-builder-intro h2 { margin: 0 0 6px; font-size: 18px; letter-spacing: -.025em; }
+.plan-builder-intro p { font-size: 12px; color: var(--label-2); line-height: 1.6; }
+.plan-builder-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.plan-builder-buttons .btn { width: 100%; font-size: 13px; min-height: 46px; padding-inline: 12px; }
+.plan-routines-bar { margin: 22px 0 14px; }
+.plan-routines-bar h2 { font-size: 18px; letter-spacing: -.025em; }
+.plan-routines-bar p { margin-top: 4px; font-size: 12px; color: var(--label-2); }
+.plan-routine-empty { padding: 24px 18px 30px; border: 1px dashed var(--sep); border-radius: 22px; }
+.plan-routine-empty h3 { color: var(--label); font-size: 18px; margin: 0 0 8px; }
+.plan-routine-empty p { max-width: 330px; margin: 0 auto; font-size: 13px; line-height: 1.65; }
+.routine-editor-header { gap: 12px; }
+.routine-editor-heading { flex: 1; min-width: 0; }
+.routine-editor-header .routine-editor-heading h1 { font-size: 24px; letter-spacing: -.04em; }
+.routine-editor-heading p { color: var(--label-2); font-size: 11px; margin-top: 4px; }
+.routine-editor-header > .btn { flex: none; min-height: 42px; }
+.routine-name-card { display: flex; align-items: center; gap: 12px; padding: 16px; background: var(--surface); border: 1px solid var(--sep-op); border-radius: 22px; margin-bottom: 24px; }
+.routine-name-card > label { display: block; flex: 1; min-width: 0; }
+.routine-name-card label > span { display: block; font-size: 11px; font-weight: 600; color: var(--label-2); margin-bottom: 7px; }
+.routine-name-card .input { min-width: 0; width: 100%; padding: 8px 10px; font-size: 18px !important; }
+.routine-name-card > .iconbtn { margin-top: 20px; }
+.routine-editor .routine-ex-h { margin: 18px 0 14px; gap: 12px; }
+.routine-editor .routine-ex-h h4.sec { font-size: 18px; font-weight: 650; text-transform: none; letter-spacing: -.025em; color: var(--label); margin: 0; }
+.routine-ex-help { color: var(--label-2); font-size: 11px; margin-top: 4px; }
+.routine-list-tools { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: -3px 0 12px; }
+.routine-list-tools > p { margin: 0; line-height: 1.5; }
+.routine-list-tools > .btn { flex: none; min-height: 40px; padding: 8px 4px; font-size: 11px; }
+.routine-arrange-controls { display: flex; flex-direction: column; gap: 2px; flex: none; align-items: center; }
+.routine-arrange-controls[hidden], .routine-grip[hidden] { display: none; }
+.routine-editor .routine-ex-h > .btn { flex: none; min-height: 44px; }
+.routine-ex-empty { padding: 28px 20px; border: 1px dashed var(--sep); background: color-mix(in srgb, var(--surface) 85%, transparent); border-radius: 22px; }
+.routine-ex-empty h3 { font-size: 18px; color: var(--label); margin-bottom: 10px; }
+.routine-ex-empty p { font-size: 13px; max-width: 340px; margin: 0 auto; line-height: 1.65; }
+.routine-editor:has(.routine-ex-empty) .routine-ex-h { display: block; }
+.routine-editor:has(.routine-ex-empty) .routine-ex-h > .btn { width: 100%; margin-top: 14px; min-height: 48px; }
+.routine-editor > .routine-start { width: 100%; margin-top: 18px; min-height: 50px; }
+.routine-options, .routine-coverage, .routine-more-actions { margin-top: 18px; background: var(--surface); border: 1px solid var(--sep-op); border-radius: 20px; overflow: hidden; }
+.routine-options > summary, .routine-coverage > summary, .routine-more-actions > summary { display: flex; justify-content: space-between; align-items: center; cursor: pointer; list-style: none; gap: 12px; min-height: 60px; padding: 17px 18px; font-size: 14px; font-weight: 600; }
+.routine-options > summary::-webkit-details-marker, .routine-coverage > summary::-webkit-details-marker, .routine-more-actions > summary::-webkit-details-marker { display: none; }
+.routine-options > summary small { display: block; font-size: 11px; color: var(--label-2); font-weight: 400; margin-top: 4px; }
+.routine-options > summary .icn, .routine-coverage > summary .icn, .routine-more-actions > summary .icn { width: 16px; height: 16px; color: var(--label-2); transition: transform .2s; }
+.routine-options[open] > summary .icn, .routine-coverage[open] > summary .icn, .routine-more-actions[open] > summary .icn { transform: rotate(180deg); }
+.routine-options-body, .routine-coverage-body, .routine-more-body { padding: 0 14px 16px; }
+.routine-options-body > .sect-b { border: 0; border-radius: 0; margin-bottom: 18px !important; }
+.routine-options-body > .small { font-size: 12px; line-height: 1.65; margin-bottom: 0 !important; }
+.routine-more-body > .btn { width: 100%; }
+@media (max-width: 360px) {
+  .routine-editor-header { gap: 8px; }
+  .routine-editor-header .routine-editor-heading h1 { font-size: 21px; }
+  .routine-editor-heading p { font-size: 10px; }
+  .routine-editor .routine-ex-h { align-items: flex-start; }
+  .routine-ex-help { max-width: 150px; }
+  .plan-builder-actions.is-empty { padding: 17px; }
+  .plan-builder-buttons { grid-template-columns: 1fr; }
+}

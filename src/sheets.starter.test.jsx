@@ -7,6 +7,8 @@ import { createRoot } from 'react-dom/client'
 import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
 import { loadStarterPlan, starterPlanSheet } from './sheets.jsx'
+import { EXIDX } from './lib/exercises.js'
+import { eqAvailable } from './lib/equipment.js'
 
 const mounted = []
 
@@ -39,7 +41,7 @@ beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true
   useUI.setState({ sheets: [], toastMsg: '' })
   useStore.setState(s => ({
-    S: { ...s.S, routines: [{ id: 'mine', name: 'My routine', emoji: 'star', ex: [] }], week: {}, active: null },
+    S: { ...s.S, routines: [{ id: 'mine', name: 'My routine', emoji: 'star', ex: [] }], week: {}, active: null, equipProfiles: [], activeEquipId: '', equipFilterOn: false, targetHistory: [] },
   }))
   document.body.innerHTML = ''
 })
@@ -122,18 +124,31 @@ describe('starter plan chooser, fitted to equipment', () => {
   const chip = (host, label) => [...host.querySelectorAll('.chip')].find(b => b.textContent === label)
   const exIds = () => S().routines.slice(1).flatMap(r => r.ex.map(e => e.id))
 
-  it('points to Settings when there is no profile, and offers no chips', () => {
+  it('offers equipment choices without requiring a trip to Settings', () => {
     starterPlanSheet()
     const host = renderTop()
-    expect(host.querySelector('.chip')).toBeNull()
-    expect(host.textContent).toContain('Add an equipment profile in Settings')
+    expect([...host.querySelectorAll('.chip')].map(b => b.textContent)).toEqual(['Full gym', 'Bodyweight', 'Dumbbells'])
+    act(() => { chip(host, 'Bodyweight').click() })
+    act(() => { rowFor(host, 'Full Body').click() })
+    expect(exIds().length).toBeGreaterThan(0)
+    expect(exIds().every(id => eqAvailable([], EXIDX[id]))).toBe(true)
+  })
+
+  it('uses the equipment chosen during personalization and assumes no bench', () => {
+    useStore.setState(s => ({ S: { ...s.S, targetHistory: [{ inputs: { equipment: 'dumbbells' } }] } }))
+    starterPlanSheet()
+    const host = renderTop()
+    expect(chip(host, 'Dumbbells').getAttribute('aria-pressed')).toBe('true')
+    act(() => { rowFor(host, 'Full Body').click() })
+    expect(exIds().length).toBeGreaterThan(0)
+    expect(exIds().every(id => eqAvailable(['dumbbell'], EXIDX[id]))).toBe(true)
   })
 
   it('loads the plan as written unless a profile is picked', () => {
     useStore.setState(s => ({ S: { ...s.S, equipProfiles: [home], activeEquipId: 'home', equipFilterOn: false } }))
     starterPlanSheet()
     const host = renderTop()
-    expect(chip(host, 'As written').className).toContain('on')
+    expect(chip(host, 'Full gym').className).toContain('on')
     act(() => { rowFor(host, 'Push / Pull / Legs').click() })
     expect(exIds()).toContain('0025')   // the barbell bench press
   })

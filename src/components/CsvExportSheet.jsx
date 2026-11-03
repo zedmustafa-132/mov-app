@@ -39,7 +39,7 @@ export function CsvExportSheet({ close }) {
       : kind === 'nutrition'
       ? nutritionCSV(nutState, r)
       : workoutsCSV(st, r)
-    const name = (kind === 'nutrition' ? 'nxtform-nutrition-' : 'opengym-' + kind + '-') + today + '.csv'
+    const name = (kind === 'nutrition' ? 'mov-nutrition-' : 'mov-' + kind + '-') + today + '.csv'
     close()
     try { await saveCSV(text, name); toast?.(t('CSV exported')) } catch (e) { /* share sheet dismissed */ }
   }

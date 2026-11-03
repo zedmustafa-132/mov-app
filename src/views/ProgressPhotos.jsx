@@ -271,7 +271,7 @@ export default function ProgressPhotos() {
     </div>
 
     {!comparing && showAdd && <div className="row" style={{ marginBottom: 16 }}>
-      <Button icon={busy ? 'image' : 'camera'} disabled={!canAdd || busy} onClick={() => fileRef.current?.click()}>
+      <Button variant="primary" icon={busy ? 'image' : 'camera'} disabled={!canAdd || busy} onClick={() => fileRef.current?.click()}>
         {busy ? t('Loading…') : t('Add photos')}
       </Button>
       <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={onFiles} />
